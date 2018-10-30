@@ -4,3 +4,4 @@ flask-apispec
 raven[flask]
 gunicorn
 gevent
+celery[redis]
