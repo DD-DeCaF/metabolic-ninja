@@ -13,9 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from cameo import models
+from cameo.strain_design import pathway_prediction
+from cobra.io.dict import reaction_to_dict
+
 from .celery import celery_app
 
 
 @celery_app.task
-def predict(model_name, product_name):
-    return True
+def predict(model_name, product_name, max_predictions):
+    model = getattr(models.bigg, model_name)
+    predictor = pathway_prediction.PathwayPredictor(model)
+    pathways = predictor.run(product=product_name, max_predictions=max_predictions)
+    # Proof of concept implementation: Return the reaction identifiers
+    return [[reaction_to_dict(r) for r in p.reactions] for p in pathways.pathways]
