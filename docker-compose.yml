@@ -34,8 +34,6 @@ services:
       default:
     volumes:
       - ".:/app"
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-development}
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
   redis:

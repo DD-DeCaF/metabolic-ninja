@@ -40,3 +40,21 @@ spec:
             cpu: "100m"
           limits:
             cpu: "200m"
+      - name: worker
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
+        resources:
+          requests:
+            cpu: "2000m"
+          limits:
+            cpu: "4000m"
+      - name: redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "200m"
