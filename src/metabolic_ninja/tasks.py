@@ -24,6 +24,10 @@ from .celery import celery_app
 def predict(model_name, product_name, max_predictions):
     model = getattr(models.bigg, model_name)
     predictor = pathway_prediction.PathwayPredictor(model)
-    pathways = predictor.run(product=product_name, max_predictions=max_predictions)
+    pathways = predictor.run(product=product_name,
+                             max_predictions=max_predictions)
     # Proof of concept implementation: Return the reaction identifiers
-    return [[reaction_to_dict(r) for r in p.reactions] for p in pathways.pathways]
+    return [
+        [reaction_to_dict(r) for r in p.reactions]
+        for p in pathways.pathways
+    ]
