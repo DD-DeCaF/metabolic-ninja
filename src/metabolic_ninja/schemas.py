@@ -27,7 +27,7 @@ class StrictSchema(Schema):
         strict = True
 
 
-class HelloSchema(StrictSchema):
-    """Example schema."""
-
-    name = fields.Str(required=True)
+class PredictionJobRequestSchema(StrictSchema):
+    model_name = fields.String(required=True)
+    product_name = fields.String(required=True)
+    max_predictions = fields.Integer(required=True)
