@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabolic-ninja-caffeine
+spec:
+  selector:
+    matchLabels:
+      app: metabolic-ninja
+      env: caffeine
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: metabolic-ninja
+        env: caffeine
+    spec:
+      containers:
+      - name: web
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:master
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: staging
+        - name: SCRIPT_NAME
+          value: /pathways-caffeine
+        - name: FLASK_APP
+          value: src/metabolic_ninja/wsgi.py
+        - name: ALLOWED_ORIGINS
+          value: https://caffeine.dd-decaf.eu,http://localhost:4200
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: SENTRY_DSN
+        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "200m"

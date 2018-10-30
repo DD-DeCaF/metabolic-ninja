@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: metabolic-ninja-caffeine
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - api-staging.dd-decaf.eu
+    secretName: decaf-tls
+  rules:
+  - host: api-staging.dd-decaf.eu
+    http:
+      paths:
+      - path: /pathways-caffeine
+        backend:
+          serviceName: metabolic-ninja-caffeine
+          servicePort: 80

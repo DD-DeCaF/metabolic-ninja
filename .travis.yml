@@ -1,0 +1,45 @@
+sudo: required
+language: minimal
+
+git:
+  depth: 2
+
+services:
+  - docker
+
+env:
+  global:
+    - IMAGE_REPO=gcr.io/dd-decaf-cfbf6/metabolic-ninja
+    - IMAGE_TAG=${TRAVIS_BRANCH}
+
+install:
+  - docker build -t ${IMAGE_REPO}:${TRAVIS_COMMIT::12} -t ${IMAGE_REPO}:${TRAVIS_BRANCH} .
+  - make setup
+
+script:
+  - make flake8
+  - make isort
+  - make license
+  - make safety
+  - make test-travis
+
+before_deploy:
+  - ./scripts/install_gcloud.sh
+  - ./scripts/install_kubectl.sh
+  - docker push ${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+  - docker push ${IMAGE_REPO}:${TRAVIS_BRANCH}
+
+deploy:
+  provider: script
+  script: ./scripts/deploy.sh
+  on:
+    all_branches: true
+
+notifications:
+  email: false
+  slack:
+    rooms:
+      - secure: "TMi29ofdGeGEYlRI61Z2ZfRUrCZEbZXBL3Io5+FjLAZLmOfA/rYFDDP69reXdUoslgBbnOO8AYm6NEAb9y/Zi8fSKPysGPxf8ShIJ25pm4z89sMGBGKMRI35SRGzGToUSIBH0XzSoaI/ltIOacLuBkrWTIrAmEMLv5IlKEQA1fu8UZ2nBpaLyI0FK0krK4Soh7XuTLoMHHJwdS1hljWLg+MgenvILFQnDgSrozRka03SKv882QY8SDevl4ppBcoNiIbKei6SXA8CBq4pX1amdIo5pqOW5g70GxG/m+6VEXvzEYLDK8oOPzacf3bSos+DrfktSCP98Gu/av+5o2SoyV8vTpVnZ8dGuc8AOgRJ7VZqzXIauum9idh5DKDBxTWBemMvzVQap0ASPavIMrKrzlFOWSkYEZSnj0Bvh22NGaizcBf0OBWCE5D2HYncbghRzefOkOqzVJhCyxiGuQHnrzwSLFlLfhMCl1mHRuBfIcfC8KQBa6k0ijsXET5zlcggv+kVrXmZkmDwymBTNX0YI6yGk98Oao06gXVd04nLGhMJK5GgPBDodkWvuAVMrnaB2ho+q8FpUbwVDhsveJa9+ZQcTPbjtzJCHKTTCqJCsSdIg4QGCz9zweCt6gBwpe2/iwNQD3zdGXumEi3T0bwTd8VLwzLsTO5hIukcb/XTnDI="
+    on_success: change
+    on_failure: change
+    on_pull_requests: false
