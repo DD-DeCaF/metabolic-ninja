@@ -12,36 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM dddecaf/wsgi-base:master
-
-ENV APP_USER=giraffe
-
-ARG UID=1000
-ARG GID=1000
+FROM gcr.io/dd-decaf-cfbf6/modeling-base:master
 
 ARG CWD="/app"
-
 ENV PYTHONPATH="${CWD}/src"
-
-RUN addgroup -S -g "${GID}" "${APP_USER}" && \
-    adduser -S -H -u "${UID}" -G "${APP_USER}" "${APP_USER}"
-
 WORKDIR "${CWD}"
 
-COPY requirements.in dev-requirements.in ./
+# pin pip to 18.0 to avoid issue with cobra -> depinfo -> pipdeptree -> pip._internal.get_installed_distributions
+RUN pip install pip==18.0
 
-# `wsgi-requirements.txt` comes from the parent image and needs to be part of
-# the `pip-sync` command otherwise those dependencies are removed.
-RUN set -eux \
-    && pip-compile --generate-hashes \
-        --output-file dev-requirements.txt dev-requirements.in \
-    && pip-compile --generate-hashes \
-        --output-file requirements.txt requirements.in \
-    && pip-sync /opt/wsgi-requirements.txt \
-        dev-requirements.txt \
-        requirements.txt \
-    && rm -rf /root/.cache/pip
+COPY requirements.in dev-requirements.in ./
+RUN pip install --upgrade -r requirements.in -r dev-requirements.in
 
 COPY . "${CWD}/"
-
-RUN chown -R "${APP_USER}:${APP_USER}" "${CWD}"

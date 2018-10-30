@@ -12,6 +12,10 @@ env:
     - IMAGE_REPO=gcr.io/dd-decaf-cfbf6/metabolic-ninja
     - IMAGE_TAG=${TRAVIS_BRANCH}
 
+before_install:
+  - ./scripts/install_gcloud.sh
+  - ./scripts/install_kubectl.sh
+
 install:
   - docker build -t ${IMAGE_REPO}:${TRAVIS_COMMIT::12} -t ${IMAGE_REPO}:${TRAVIS_BRANCH} .
   - make setup
@@ -24,8 +28,6 @@ script:
   - make test-travis
 
 before_deploy:
-  - ./scripts/install_gcloud.sh
-  - ./scripts/install_kubectl.sh
   - docker push ${IMAGE_REPO}:${TRAVIS_COMMIT::12}
   - docker push ${IMAGE_REPO}:${TRAVIS_BRANCH}
 
