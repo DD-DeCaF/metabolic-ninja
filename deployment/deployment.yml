@@ -63,3 +63,10 @@ spec:
             cpu: "100m"
           limits:
             cpu: "200m"
+        volumeMounts:
+          - mountPath: "/data"
+            name: metabolic-ninja-caffeine
+      volumes:
+        - name: metabolic-ninja-caffeine
+          persistentVolumeClaim:
+           claimName: metabolic-ninja-caffeine
