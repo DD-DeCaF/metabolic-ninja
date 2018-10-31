@@ -18,9 +18,6 @@ ARG CWD="/app"
 ENV PYTHONPATH="${CWD}/src"
 WORKDIR "${CWD}"
 
-# pin pip to 18.0 to avoid issue with cobra -> depinfo -> pipdeptree -> pip._internal.get_installed_distributions
-RUN pip install pip==18.0
-
 COPY requirements.in dev-requirements.in ./
 RUN pip install --upgrade -r requirements.in -r dev-requirements.in
 
