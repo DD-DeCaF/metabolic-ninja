@@ -5,3 +5,4 @@ raven[flask]
 gunicorn
 gevent
 celery[redis]
+flower

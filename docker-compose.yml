@@ -34,6 +34,18 @@ services:
       - ".:/app"
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
+  flower:
+    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
+    depends_on:
+      - redis
+    networks:
+      default:
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    volumes:
+      - ".:/app"
+    command: celery flower -A metabolic_ninja --broker=redis://redis:6379/0
+
   redis:
     image: redis
     ports:
