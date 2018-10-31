@@ -52,6 +52,7 @@ services:
       - "6379"
     networks:
       - default
+    command: redis-server --appendonly yes
 
 # Additional services that the `web` service `depends_on` should usually only
 # be on the default network and not exposed on the general network, i.e.,

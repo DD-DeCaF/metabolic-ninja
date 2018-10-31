@@ -58,6 +58,7 @@ spec:
         image: redis:latest
         ports:
         - containerPort: 6379
+        command: ["redis-server", "--appendonly", "yes"]
         resources:
           requests:
             cpu: "100m"
