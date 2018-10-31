@@ -22,4 +22,4 @@ celery_app = Celery(
     backend='redis://redis:6379/0',
 )
 
-celery_app.conf.update(result_expires=3600)
+celery_app.conf.update(result_expires=None)
