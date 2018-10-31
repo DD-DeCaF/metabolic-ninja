@@ -25,9 +25,7 @@ services:
     command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
       - redis
     networks:
