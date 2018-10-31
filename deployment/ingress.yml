@@ -21,7 +21,7 @@ spec:
   - host: flower.dd-decaf.eu
     http:
       paths:
-      - path: /
+      - path: /pathways
         backend:
           serviceName: metabolic-ninja-caffeine
           servicePort: 5555
