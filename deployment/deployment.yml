@@ -29,6 +29,11 @@ spec:
           value: src/metabolic_ninja/wsgi.py
         - name: ALLOWED_ORIGINS
           value: https://caffeine.dd-decaf.eu,http://localhost:4200
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: SECRET_KEY
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
