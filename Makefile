@@ -77,6 +77,14 @@ clean:
 logs:
 	docker-compose logs --tail="all" -f
 
+## Create the necessary databases.
+databases:
+	docker-compose up -d postgres
+	./scripts/wait_for_postgres.sh
+	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja;"
+	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja_testing;"
+	docker-compose stop
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################

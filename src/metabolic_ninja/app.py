@@ -20,6 +20,7 @@ import logging.config
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_migrate import Migrate
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -27,13 +28,17 @@ from werkzeug.contrib.fixers import ProxyFix
 app = Flask(__name__)
 
 
-def init_app(application):
+def init_app(application, database):
     """Initialize the main app with config information and routes."""
     from metabolic_ninja.settings import current_config
     application.config.from_object(current_config())
 
     # Configure logging
     logging.config.dictConfig(application.config['LOGGING'])
+
+    # Configure the database connection.
+    database.init_app(application)
+    Migrate(application, database)
 
     # Configure Sentry
     if application.config['SENTRY_DSN']:

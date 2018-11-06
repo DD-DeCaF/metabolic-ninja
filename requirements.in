@@ -6,3 +6,9 @@ gunicorn
 gevent
 celery[redis]
 flower
+python-jose
+Flask-Migrate
+flask-sqlalchemy
+psycopg2-binary
+sqlalchemy
+Alembic

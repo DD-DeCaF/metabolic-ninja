@@ -26,3 +26,29 @@ possible variables and their default values.
 * `SENTRY_DSN` DSN for reporting exceptions to
   [Sentry](https://docs.sentry.io/clients/python/integrations/flask/).
 * `ALLOWED_ORIGINS`: Comma-seperated list of CORS allowed origins.
+
+## Database Migrations
+
+It is important to migrate the database before starting your work and also to
+create migrations whenever you change database models.
+
+    make databases
+ 
+The following commands will be useful. Please also read the full 
+[documentation online](https://flask-migrate.readthedocs.io/en/latest/).
+ 
+    docker-compose run --rm web flask db init
+    docker-compose run --rm web flask db migrate
+    docker-compose run --rm web flask db upgrade
+    
+You also need to create the database and tables like so:
+
+    dock
+    >>> from .app import app, init_app
+    >>> from .models import db
+    >>> init_app(app, db)
+    >>> db.create_all()
+    
+Before deploying the service you should run those commands with the `-e 
+ENVIRONMENT=production` or `staging` flag in order to create the required 
+tables on our production/staging database.

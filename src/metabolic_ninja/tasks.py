@@ -15,19 +15,68 @@
 
 from cameo import models
 from cameo.strain_design import pathway_prediction
+from celery import chain
 from cobra.io.dict import reaction_to_dict
 
 from .celery import celery_app
+from .models import DesignJob
 
 
-@celery_app.task
-def predict(model_name, product_name, max_predictions):
-    model = getattr(models.bigg, model_name)
+def design(project_id, model_id, model, product_name, max_predictions):
+    res = chain(
+        save_job(project_id, model_id) |
+        find_product(product_name) |
+        find_pathways(model, max_predictions) |
+        # Check current cameo workflow. Either apply optimizations
+        # sequentially or in a parallel group.
+        optimize(model) |
+        save_result()
+    )
+    return res
+
+
+# TODO: Make sure that `self.id` corresponds to the chain ID.
+@celery_app.task(bind=True, ignore_result=True)
+def save_job(self, project_id, model_id):
+    # Create a session.
+    # session =
+    job = DesignJob(project_id=project_id, model_id=model_id, task_id=self.id)
+    # session.add(job)
+    # session.commit()
+
+
+@celery_app.task()
+def find_product(product_name):
+    # Find the product name via MetaNetX.
+    return product_name
+
+
+@celery_app.task()
+def find_pathways(product, model, max_predictions):
     predictor = pathway_prediction.PathwayPredictor(model)
-    pathways = predictor.run(product=product_name,
-                             max_predictions=max_predictions)
-    # Proof of concept implementation: Return the reaction identifiers
-    return [
-        [reaction_to_dict(r) for r in p.reactions]
-        for p in pathways.pathways
-    ]
+    pathways = predictor.run(product=product, max_predictions=max_predictions)
+    return pathways
+
+
+@celery_app.task()
+def optimize(pathways, model):
+    # Run optimizations on each pathway applied to the model.
+    results = []
+    for path in pathways:
+        with model:
+            path.plug_model(model)
+            # optimize
+            results.append()
+    return results
+
+
+# TODO: Make sure that `self.id` corresponds to the chain ID.
+@celery_app.task(bind=True, ignore_result=True)
+def save_result(self, results):
+    # Create a session.
+    # session =
+    job = session.query(DesignJob).filter(task_id=self.id).one()
+    job.is_complete = True
+    job.result = results
+    session.add(job)
+    session.commit()

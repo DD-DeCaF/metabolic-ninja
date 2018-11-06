@@ -15,7 +15,8 @@
 
 """Prepare the application for use by the WSGI server (gunicorn)."""
 
-from metabolic_ninja.app import app, init_app
+from .app import app, init_app
+from .models import db
 
 
-init_app(app)
+init_app(app, db)
