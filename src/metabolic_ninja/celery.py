@@ -13,21 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Marshmallow schemas for marshalling the API endpoints."""
-
-from marshmallow import Schema, fields
+from celery import Celery
 
 
-class StrictSchema(Schema):
-    """Shared empty schema instance with strict validation."""
+celery_app = Celery(
+    'metabolic_ninja_worker',
+    broker='redis://redis:6379/0',
+    backend='redis://redis:6379/0',
+)
 
-    class Meta:
-        """Meta class for marshmallow schemas."""
-
-        strict = True
-
-
-class PredictionJobRequestSchema(StrictSchema):
-    model_name = fields.String(required=True)
-    product_name = fields.String(required=True)
-    max_predictions = fields.Integer(required=True)
+celery_app.conf.update(result_expires=None)

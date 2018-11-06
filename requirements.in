@@ -2,3 +2,7 @@ Flask
 Flask-Cors
 flask-apispec
 raven[flask]
+gunicorn
+gevent
+celery[redis]
+flower

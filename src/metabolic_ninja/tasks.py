@@ -13,21 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Marshmallow schemas for marshalling the API endpoints."""
+from cameo import models
+from cameo.strain_design import pathway_prediction
+from cobra.io.dict import reaction_to_dict
 
-from marshmallow import Schema, fields
-
-
-class StrictSchema(Schema):
-    """Shared empty schema instance with strict validation."""
-
-    class Meta:
-        """Meta class for marshmallow schemas."""
-
-        strict = True
+from .celery import celery_app
 
 
-class PredictionJobRequestSchema(StrictSchema):
-    model_name = fields.String(required=True)
-    product_name = fields.String(required=True)
-    max_predictions = fields.Integer(required=True)
+@celery_app.task
+def predict(model_name, product_name, max_predictions):
+    model = getattr(models.bigg, model_name)
+    predictor = pathway_prediction.PathwayPredictor(model)
+    pathways = predictor.run(product=product_name,
+                             max_predictions=max_predictions)
+    # Proof of concept implementation: Return the reaction identifiers
+    return [
+        [reaction_to_dict(r) for r in p.reactions]
+        for p in pathways.pathways
+    ]

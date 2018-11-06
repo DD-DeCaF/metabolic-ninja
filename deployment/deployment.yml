@@ -29,6 +29,11 @@ spec:
           value: src/metabolic_ninja/wsgi.py
         - name: ALLOWED_ORIGINS
           value: https://caffeine.dd-decaf.eu,http://localhost:4200
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: SECRET_KEY
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
@@ -40,3 +45,29 @@ spec:
             cpu: "100m"
           limits:
             cpu: "200m"
+      - name: worker
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
+        resources:
+          requests:
+            cpu: "2000m"
+          limits:
+            cpu: "4000m"
+      - name: redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+        command: ["redis-server", "--appendonly", "yes"]
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "200m"
+        volumeMounts:
+          - mountPath: "/data"
+            name: metabolic-ninja-caffeine
+      volumes:
+        - name: metabolic-ninja-caffeine
+          persistentVolumeClaim:
+           claimName: metabolic-ninja-caffeine

@@ -15,25 +15,45 @@
 
 """Implement RESTful API endpoints using resources."""
 
-from flask_apispec import MethodResource, marshal_with, use_kwargs
+from celery.result import AsyncResult
+from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 
-from .schemas import HelloSchema
+from .celery import celery_app
+from .schemas import PredictionJobRequestSchema
+from .tasks import predict
 
 
-class HelloResource(MethodResource):
-    """Example API resource."""
+class PredictionJobsResource(MethodResource):
+    @use_kwargs(PredictionJobRequestSchema)
+    def post(self, model_name, product_name, max_predictions):
+        result = predict.delay(model_name, product_name, max_predictions)
+        return {
+            'id': result.id,
+            'state': result.state,
+        }, 202
 
-    @use_kwargs(HelloSchema)
-    @marshal_with(HelloSchema, code=200)
-    def get(self, name):
-        """
-        Implement example endpoint.
 
-        This demonstrates both how to use request argument validation
-        (use_kwargs) and response marshalling (marshal_with).
-        """
-        return {'name': name}
+class PredictionJobResource(MethodResource):
+    def get(self, task_id):
+        result = AsyncResult(id=task_id, app=celery_app)
+        if not result.ready():
+            return {
+                'id': result.id,
+                'state': result.state,
+            }, 202
+        else:
+            try:
+                return {
+                    'state': result.state,
+                    'result': result.get(),
+                }
+            except Exception as e:
+                return {
+                    'state': result.state,
+                    'exception': type(e).__name__,
+                    'message': str(e),
+                }
 
 
 def init_app(app):
@@ -43,4 +63,5 @@ def init_app(app):
         docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
-    register('/hello', HelloResource)
+    register('/predict', PredictionJobsResource)
+    register('/predict/<string:task_id>', PredictionJobResource)
