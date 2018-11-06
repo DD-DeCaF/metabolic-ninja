@@ -26,11 +26,23 @@ from .tasks import predict
 
 class PredictionJobsResource(MethodResource):
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, model_name, product_name, max_predictions):
+    def post(self, bigg, kegg, rhea, model_name, product_name, max_predictions, product, project_id, model, species):
         result = predict.delay(model_name, product_name, max_predictions)
         return {
             'id': result.id,
             'state': result.state,
+            'configuration': {
+                'bigg': bigg,
+                'kegg': kegg,
+                'rhea': rhea,
+                'model_name': model_name,
+                'product_name': product_name,
+                'max_predictions': max_predictions,
+                'product': product,
+                'project_id': project_id,
+                'model': model,
+                'species': species
+            }
         }, 202
 
 
@@ -41,6 +53,7 @@ class PredictionJobResource(MethodResource):
             return {
                 'id': result.id,
                 'state': result.state,
+                'info': result.info,
             }, 202
         else:
             try:

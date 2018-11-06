@@ -27,7 +27,34 @@ class StrictSchema(Schema):
         strict = True
 
 
+class ProductSchema(Schema):
+    name = fields.String(required=True)
+    id = fields.Integer(required=True)
+
+
+class ModelSchema(Schema):
+    name = fields.String(required=True)
+    id = fields.Integer(required=True)
+    organism_id = fields.Integer(required=True)
+    project_id = fields.Integer(allow_none=True)
+
+
+class SpeciesSchema(Schema):
+    created = fields.String(required=True)
+    updated = fields.String(allow_none=True)
+    name = fields.String(required=True)
+    id = fields.Integer(required=True)
+    project_id = fields.Integer(allow_none=True)
+
+
 class PredictionJobRequestSchema(StrictSchema):
+    bigg = fields.Boolean()
+    kegg = fields.Boolean()
+    rhea = fields.Boolean()
     model_name = fields.String(required=True)
     product_name = fields.String(required=True)
     max_predictions = fields.Integer(required=True)
+    product = fields.Nested(ProductSchema)
+    project_id = fields.Integer(required=True)
+    model = fields.Nested(ModelSchema)
+    species = fields.Nested(SpeciesSchema, required=True)
