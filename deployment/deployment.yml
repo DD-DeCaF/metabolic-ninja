@@ -53,7 +53,7 @@ spec:
           requests:
             cpu: "2000m"
           limits:
-            cpu: "4000m"
+            cpu: "6000m"
       - name: redis
         image: redis:latest
         ports:
