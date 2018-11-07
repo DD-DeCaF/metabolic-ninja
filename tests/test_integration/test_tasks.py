@@ -13,13 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from celery import Celery
+"""Test expected functioning of the celery tasks."""
+
+import metabolic_ninja.tasks as tasks
+from metabolic_ninja.models import DesignJob
 
 
-celery_app = Celery(
-    'metabolic_ninja_worker',
-    broker='redis://redis:6379/0',
-    backend='redis://redis:6379/1',
-)
+def test_save_job(celery_worker, celery_app, session):
+    result = celery_app.AsyncResult("foo")
+    tmp = tasks.save_job.delay(1, 2, result.id)
+    # Wait for completion.
+    tmp.get()
+    job = session.query(DesignJob).filter_by(task_id=result.id).one()
+    assert job.project_id == 1
+    assert job.model_id == 2
 
-celery_app.conf.update(result_expires=None)

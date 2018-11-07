@@ -12,3 +12,4 @@ flask-sqlalchemy
 psycopg2-binary
 sqlalchemy
 Alembic
+https://github.com/biosustain/cameo/archive/refactor-design.zip

@@ -16,7 +16,6 @@
 """Implement RESTful API endpoints using resources."""
 
 import requests
-from celery.result import AsyncResult
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 from werkzeug.exceptions import Unauthorized, Forbidden, NotFound
@@ -24,14 +23,16 @@ from werkzeug.exceptions import Unauthorized, Forbidden, NotFound
 from .app import app
 from .celery import celery_app
 from .schemas import JWTSchema, PredictionJobRequestSchema
-from .tasks import design
+from .tasks import design_flow, save_job
 from .jwt import jwt_require_claim
 
 
 class PredictionJobsResource(MethodResource):
+
     @use_kwargs(PredictionJobRequestSchema)
     @use_kwargs(JWTSchema(), location="headers")
-    def post(self, model_id, project_id, product_name, max_predictions, token):
+    def post(self, model_id, project_id, product_name, max_predictions,
+             aerobic=False, token=None):
         """
         Create a design job.
 
@@ -51,7 +52,9 @@ class PredictionJobsResource(MethodResource):
         # Verify that the user may actually start a job for the given project
         # identifier.
         jwt_require_claim(project_id, "write")
-        result = predict.delay(project_id, model, product_name, max_predictions)
+        result = design_flow(model, product_name, max_predictions, aerobic)
+        # Store the unfinished job in the result database.
+        save_job.delay(project_id, model_id, result.id)
         return {
             'id': result.id,
             'state': result.state,
@@ -76,10 +79,16 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         return response.json()
 
+    @use_kwargs(JWTSchema(), location="headers")
+    def get(self, token):
+        # Return a list of jobs that the user can see.
+        pass
+
 
 class PredictionJobResource(MethodResource):
+
     def get(self, task_id):
-        result = AsyncResult(id=task_id, app=celery_app)
+        result = celery_app.AsyncResult(id=task_id)
         if not result.ready():
             return {
                 'id': result.id,
@@ -106,5 +115,5 @@ def init_app(app):
         docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
-    register('/predict', PredictionJobsResource)
-    register('/predict/<string:task_id>', PredictionJobResource)
+    register('/designs', PredictionJobsResource)
+    register('/designs/<string:task_id>', PredictionJobResource)

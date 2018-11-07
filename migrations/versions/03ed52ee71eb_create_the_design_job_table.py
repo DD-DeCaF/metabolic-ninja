@@ -1,7 +1,7 @@
 """Create the design job table
 
 Revision ID: 03ed52ee71eb
-Revises: 
+Revises:
 Create Date: 2018-11-06 19:25:10.040962
 
 """
@@ -26,6 +26,7 @@ def upgrade():
     sa.Column('model_id', sa.Integer(), nullable=False),
     sa.Column('task_id', sa.String(length=36), nullable=False),
     sa.Column('is_complete', sa.Boolean(), nullable=False),
+    sa.Column('status', sa.String(length=8), nullable=False),
     sa.Column('result', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('task_id')

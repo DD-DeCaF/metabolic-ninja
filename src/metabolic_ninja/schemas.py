@@ -15,7 +15,7 @@
 
 """Marshmallow schemas for marshalling the API endpoints."""
 
-from marshmallow import Schema, fields, post_load
+from marshmallow import Schema, fields
 
 
 class StrictSchema(Schema):
@@ -29,18 +29,11 @@ class StrictSchema(Schema):
 
 class PredictionJobRequestSchema(StrictSchema):
     model_id = fields.Integer(required=True)
-    project_id = fields.Integer(required=False)
+    project_id = fields.Integer(required=True)
     product_name = fields.String(required=True)
     max_predictions = fields.Integer(required=True)
+    aerobic = fields.Boolean(required=False)
 
 
 class JWTSchema(StrictSchema):
     token = fields.String(name="Authorization", required=False)
-
-    # @post_load
-    # def extract_token(self, data):
-    #     # TODO: Error check supplied 'Authorization' value.
-    #     return {
-    #         "token": data.split(" ", 1)[1],
-    #         "bearer": data
-    #     }

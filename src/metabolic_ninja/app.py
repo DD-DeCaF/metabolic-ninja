@@ -24,6 +24,8 @@ from flask_migrate import Migrate
 from raven.contrib.flask import Sentry
 from werkzeug.contrib.fixers import ProxyFix
 
+from . import jwt
+
 
 app = Flask(__name__)
 
@@ -39,6 +41,9 @@ def init_app(application, database):
     # Configure the database connection.
     database.init_app(application)
     Migrate(application, database)
+
+    # Add middleware.
+    jwt.init_app(application)
 
     # Configure Sentry
     if application.config['SENTRY_DSN']:

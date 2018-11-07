@@ -20,6 +20,7 @@ build:
 
 ## Start all services in the background.
 start:
+#	docker-compose up --force-recreate -d worker
 	docker-compose up --force-recreate -d
 
 ## Run all QA targets.
@@ -54,15 +55,15 @@ safety:
 ## Run the tests.
 test:
 	docker-compose run --rm -e ENVIRONMENT=testing web \
-		pytest --cov=src/metabolic_ninja
+		pytest -W ignore::DeprecationWarning --cov=src/metabolic_ninja
 
 ## Run the tests and report coverage (see https://docs.codecov.io/docs/testing-with-docker).
 shared := /tmp/coverage
 test-travis:
 	mkdir --parents "$(shared)"
 	docker-compose run --rm -e ENVIRONMENT=testing -v "$(shared):$(shared)" \
-		web pytest --cov-report "xml:$(shared)/coverage.xml" --cov-report term \
-		--cov=src/metabolic_ninja
+		web pytest -W ignore::DeprecationWarning --cov-report \
+		"xml:$(shared)/coverage.xml" --cov-report term --cov=src/metabolic_ninja
 	bash <(curl -s https://codecov.io/bash) -f "$(shared)/coverage.xml"
 
 ## Stop all services.

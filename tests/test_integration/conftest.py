@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from celery import Celery
+
+import pytest
 
 
-celery_app = Celery(
-    'metabolic_ninja_worker',
-    broker='redis://redis:6379/0',
-    backend='redis://redis:6379/1',
-)
+@pytest.fixture(scope='session')
+def celery_config():
+    return {
+        'broker_url': 'redis://redis:6379/0',
+        'result_backend': 'redis://redis:6379/1'
+    }
 
-celery_app.conf.update(result_expires=None)
+

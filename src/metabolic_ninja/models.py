@@ -36,6 +36,9 @@ class DesignJob(TimestampMixin, db.Model):
     # The UUID assigned by celery.
     task_id = db.Column(db.String(36), nullable=False, unique=True)
     is_complete = db.Column(db.Boolean, default=False, nullable=False)
+    # The status refers to
+    # http://docs.celeryproject.org/en/latest/reference/celery.states.html#misc.
+    status = db.Column(db.String(8), nullable=False)
     result = db.Column(postgresql.JSONB, nullable=True)
 
     def __repr__(self):
