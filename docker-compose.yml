@@ -76,7 +76,7 @@ services:
     command: redis-server --appendonly yes
 
   postgres:
-    image: postgres:11.0-alpine
+    image: postgres:9.6-alpine
     volumes:
       - /var/lib/postgresql/data
     networks:

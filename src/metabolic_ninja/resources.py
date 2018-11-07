@@ -115,5 +115,5 @@ def init_app(app):
         docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
-    register('/designs', PredictionJobsResource)
-    register('/designs/<string:task_id>', PredictionJobResource)
+    register('/predictions', PredictionJobsResource)
+    register('/predictions/<string:task_id>', PredictionJobResource)
