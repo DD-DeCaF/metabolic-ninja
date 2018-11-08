@@ -96,6 +96,7 @@ class Default:
         )
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
         self.JWT_PUBLIC_KEY = requests.get(f"{os.environ['IAM_API']}/keys").json()["keys"][0]
+        self.ALGORITHM = 'RS512'
 
 
 class Development(Default):
