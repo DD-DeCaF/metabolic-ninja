@@ -18,6 +18,7 @@
 from celery.result import AsyncResult
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
+from cameo import models
 
 from .celery import celery_app
 from .schemas import PredictionJobRequestSchema
@@ -26,24 +27,11 @@ from .tasks import predict
 
 class PredictionJobsResource(MethodResource):
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, bigg, kegg, rhea, model_name, product_name, max_predictions,
-             product, project_id, model, species):
+    def post(self, model_name, product_name, max_predictions):
         result = predict.delay(model_name, product_name, max_predictions)
         return {
             'id': result.id,
             'state': result.state,
-            'configuration': {
-                'bigg': bigg,
-                'kegg': kegg,
-                'rhea': rhea,
-                'model_name': model_name,
-                'product_name': product_name,
-                'max_predictions': max_predictions,
-                'product': product,
-                'project_id': project_id,
-                'model': model,
-                'species': species
-            }
         }, 202
 
 
@@ -70,6 +58,11 @@ class PredictionJobResource(MethodResource):
                 }
 
 
+class ProductsResource(MethodResource):
+    def get(self):
+        return [{'name': m.name} for m in models.metanetx_universal_model_bigg_rhea.metabolites]
+
+
 def init_app(app):
     """Register API resources on the provided Flask application."""
     def register(path, resource):
@@ -79,3 +72,4 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register('/predict', PredictionJobsResource)
     register('/predict/<string:task_id>', PredictionJobResource)
+    register('/products', ProductsResource)
