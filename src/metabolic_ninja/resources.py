@@ -19,6 +19,7 @@ import requests
 from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
+from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from .app import app
@@ -94,25 +95,27 @@ class PredictionJobsResource(MethodResource):
 
 class PredictionJobResource(MethodResource):
 
-    def get(self, task_id):
-        result = celery_app.AsyncResult(id=task_id)
-        if not result.ready():
-            return {
-                'id': result.id,
-                'state': result.state,
-            }, 202
+    def get(self, job_id):
+        try:
+            job = DesignJob.query.filter(
+                DesignJob.id == job_id,
+            ).filter(
+                DesignJob.project_id.in_(g.jwt_claims['prj']) |
+                DesignJob.project_id.is_(None)
+            ).one()
+        except NoResultFound:
+            return {'error': f"Cannot find any model with id {job_id}"}, 404
         else:
-            try:
-                return {
-                    'state': result.state,
-                    'result': result.get(),
-                }
-            except Exception as error:
-                return {
-                    'state': result.state,
-                    'exception': type(error).__name__,
-                    'message': str(error),
-                }
+            if job.is_complete():
+                status = 200
+            else:
+                status = 202
+            return {
+                'id': job.id,
+                'task_id': job.task_id,
+                'status': job.status,
+                'result': job.result,
+            }, status
 
 
 def init_app(app):
@@ -123,4 +126,4 @@ def init_app(app):
 
     docs = FlaskApiSpec(app)
     register('/predictions', PredictionJobsResource)
-    register('/predictions/<string:task_id>', PredictionJobResource)
+    register('/predictions/<string:job_id>', PredictionJobResource)
