@@ -16,6 +16,7 @@
 """Implement RESTful API endpoints using resources."""
 
 import requests
+from cameo import models
 from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
@@ -118,6 +119,12 @@ class PredictionJobResource(MethodResource):
             }, status
 
 
+class ProductsResource(MethodResource):
+    def get(self):
+        return [{'name': m.name} for m in
+                models.metanetx_universal_model_bigg_rhea.metabolites]
+
+
 def init_app(app):
     """Register API resources on the provided Flask application."""
     def register(path, resource):
@@ -127,3 +134,4 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register('/predictions', PredictionJobsResource)
     register('/predictions/<string:job_id>', PredictionJobResource)
+    register('/products', ProductsResource) 
