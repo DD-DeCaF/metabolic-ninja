@@ -93,3 +93,6 @@ spec:
         - name: metabolic-ninja-caffeine
           persistentVolumeClaim:
            claimName: metabolic-ninja-caffeine
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
