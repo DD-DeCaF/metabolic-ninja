@@ -23,6 +23,7 @@ services:
     - SCRIPT_NAME=${SCRIPT_NAME}
     - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
     - SENTRY_DSN=${SENTRY_DSN}
+    - REDIS_HOST=${REDIS_HOST:-redis:6379}
     - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/mstorage}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -42,6 +43,7 @@ services:
     - ".:/app"
     environment:
     - SENTRY_DSN=${SENTRY_DSN}
+    - REDIS_HOST=${REDIS_HOST:-redis:6379}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
@@ -59,6 +61,8 @@ services:
     - "${FLOWER_PORT:-5555}:5555"
     volumes:
     - ".:/app"
+    environment:
+    - REDIS_HOST=${REDIS_HOST:-redis:6379}
     command: celery flower -A metabolic_ninja --broker=redis://redis:6379/0
 
   redis:
