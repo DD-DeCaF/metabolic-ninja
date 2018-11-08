@@ -24,11 +24,12 @@ from .app import app
 from .celery import celery_app
 from .schemas import JWTSchema, PredictionJobRequestSchema
 from .tasks import design_flow, save_job
-from .jwt import jwt_require_claim
+from .jwt import jwt_require_claim, jwt_required
 
 
 class PredictionJobsResource(MethodResource):
 
+    @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
     @use_kwargs(JWTSchema(), location="headers")
     def post(self, model_id, project_id, product_name, max_predictions,
