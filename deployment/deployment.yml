@@ -31,6 +31,16 @@ spec:
           value: https://caffeine.dd-decaf.eu,http://localhost:4200
         - name: REDIS_HOST
           value: localhost:6379
+        - name: MODEL_STORAGE_API
+          value: https://api-staging.dd-decaf.eu/mstorage
+        - name: IAM_API
+          value: https://api-staging.dd-decaf.eu/iam
+        - name: POSTGRES_HOST
+          value: localhost
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
