@@ -35,7 +35,6 @@ class DesignJob(TimestampMixin, db.Model):
     model_id = db.Column(db.Integer, nullable=False)
     # The UUID assigned by celery.
     task_id = db.Column(db.String(36), nullable=False, unique=True)
-    is_complete = db.Column(db.Boolean, default=False, nullable=False)
     # The status refers to
     # http://docs.celeryproject.org/en/latest/reference/celery.states.html#misc.
     status = db.Column(db.String(8), nullable=False)
@@ -44,3 +43,6 @@ class DesignJob(TimestampMixin, db.Model):
     def __repr__(self):
         """Return a printable representation."""
         return f"<{self.__class__.__name__} {self.id}: {self.name}>"
+
+    def is_complete(self):
+        return self.status in ('SUCCESS', 'FAILURE', 'REVOKED')

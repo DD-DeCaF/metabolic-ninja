@@ -121,7 +121,6 @@ def save_result(self, results):
     with db_session() as session:
         job = session.query(DesignJob).filter_by(task_id=self.request.id).one()
         job.result = results
-        job.is_complete = True
         job.status = self.state
         session.add(job)
         session.commit()
@@ -151,7 +150,6 @@ def error_handler(uuid):
             except NoResultFound:
                 sleep(2)
         if job is not None:
-            job.is_complete = True
             job.status = result.state
             session.add(job)
             session.commit()
