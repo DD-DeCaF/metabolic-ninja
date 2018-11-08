@@ -27,4 +27,3 @@ def test_save_job(celery_worker, celery_app, session):
     job = session.query(DesignJob).filter_by(task_id=result.id).one()
     assert job.project_id == 1
     assert job.model_id == 2
-

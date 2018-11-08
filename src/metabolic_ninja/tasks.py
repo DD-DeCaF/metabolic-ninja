@@ -1,4 +1,4 @@
-    # Copyright (c) 2018, Novo Nordisk Foundation Center for Biosustainability,
+# Copyright (c) 2018, Novo Nordisk Foundation Center for Biosustainability,
 # Technical University of Denmark.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
