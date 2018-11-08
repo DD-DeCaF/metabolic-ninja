@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import os
 from contextlib import contextmanager
 from time import sleep
 
@@ -23,15 +24,12 @@ from cameo.parallel import MultiprocessingView
 from celery import chain
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from .celery import celery_app
 from .models import DesignJob
-# An `app` object in the module will be mistaken by the celery worker to be the
-# Celery app.
-from .app import app as app_
-from .app import init_app
-from .models import db as db_
 
 
 logger = get_task_logger(__name__)
@@ -46,9 +44,15 @@ design.database = universal.metanetx_universal_model_bigg_rhea
 
 @contextmanager
 def db_session():
-    init_app(app_, db_)
-    with app_.app_context():
-        yield db_.session
+    """Connect to the database and yield an SA session."""
+    engine = create_engine(
+        'postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASS}@{POSTGRES_HOST}:'
+        '{POSTGRES_PORT}/{POSTGRES_DB_NAME}'.format(**os.environ)
+    )
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    yield session
+    session.close()
 
 
 def design_flow(model_obj, product_name, max_predictions, aerobic):

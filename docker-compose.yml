@@ -41,18 +41,12 @@ services:
     volumes:
     - ".:/app"
     environment:
-    - ENVIRONMENT=${ENVIRONMENT:-development}
-    - FLASK_APP=src/metabolic_ninja/wsgi.py
-    - SCRIPT_NAME=${SCRIPT_NAME}
-    - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
     - SENTRY_DSN=${SENTRY_DSN}
-    - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/mstorage}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
     - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
     - POSTGRES_PASS=${POSTGRES_PASS}
-    - IAM_API=https://api-staging.dd-decaf.eu/iam
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
   flower:
