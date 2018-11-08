@@ -16,17 +16,15 @@
 
 import os
 from contextlib import contextmanager
-from time import sleep
 
 from cameo.api import design
 from cameo.models import universal
 from cameo.parallel import MultiprocessingView
-from celery import chain
+from celery.signals import task_postrun, task_prerun
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.exc import NoResultFound
 
 from .celery import celery_app
 from .models import DesignJob
@@ -55,28 +53,29 @@ def db_session():
     session.close()
 
 
-def design_flow(model_obj, product_name, max_predictions, aerobic):
-    """Define a workflow and return its AsyncResult."""
-    chain_def = chain(
-        # TODO: Move save_job here.
-        predict.s(model_obj, product_name, max_predictions, aerobic) |
-        save_result.s()
-    )
-    return chain_def()
-
-
-@celery_app.task(ignore_result=True)
-def save_job(project_id, model_id, uuid):
-    result = celery_app.AsyncResult(uuid)
+@task_prerun.connect
+def task_prerun_handler(**kwargs):
     with db_session() as session:
-        job = DesignJob(project_id=project_id, model_id=model_id,
-                        task_id=result.id, status=result.state)
+        job_id = kwargs['args'][0]
+        job = session.query(DesignJob).filter_by(id=job_id).one()
+        job.status = 'STARTED'
+        job.task_id = kwargs['task'].request.id
+        session.add(job)
+        session.commit()
+
+
+@task_postrun.connect
+def task_postrun_handler(**kwargs):
+    with db_session() as session:
+        job_id = kwargs['args'][0]
+        job = session.query(DesignJob).filter_by(id=job_id).one()
+        job.status = kwargs['state']
         session.add(job)
         session.commit()
 
 
 @celery_app.task
-def predict(model_obj, product, max_predictions, aerobic):
+def predict(job_id, model_obj, product, max_predictions, aerobic):
     model = model_from_dict(model_obj)
     design.options.max_pathway_predictions = max_predictions
     view = MultiprocessingView(processes=3)
@@ -88,42 +87,3 @@ def predict(model_obj, product, max_predictions, aerobic):
         aerobic=aerobic
     )
     return reports
-
-
-@celery_app.task(bind=True, ignore_result=True)
-def save_result(self, results):
-    with db_session() as session:
-        job = session.query(DesignJob).filter_by(task_id=self.request.id).one()
-        job.result = results
-        job.status = self.state
-        session.add(job)
-        session.commit()
-
-
-@celery_app.task
-def error_handler(uuid):
-    """
-
-    See also
-    http://docs.celeryproject.org/en/latest/userguide/calling.html#linking-callbacks-errbacks
-
-    """
-    result = celery_app.AsyncResult(uuid)
-    exception = result.get(propagate=False)
-    logger.error(exc_info=exception)
-    # Log to sentry.
-    # Store job as failed.
-    with db_session() as session:
-        is_pending = True
-        job = None
-        # Wait for save_job to complete.
-        while is_pending:
-            try:
-                job = session.query(DesignJob).filter_by(task_id=result.id).one()
-                is_pending = False
-            except NoResultFound:
-                sleep(2)
-        if job is not None:
-            job.status = result.state
-            session.add(job)
-            session.commit()

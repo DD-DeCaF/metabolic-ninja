@@ -19,13 +19,14 @@ import requests
 from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
-from werkzeug.exceptions import Unauthorized, Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from .app import app
 from .celery import celery_app
-from .schemas import PredictionJobRequestSchema
-from .tasks import design_flow, save_job
 from .jwt import jwt_require_claim, jwt_required
+from .models import DesignJob, db
+from .schemas import PredictionJobRequestSchema
+from .tasks import predict
 
 
 class PredictionJobsResource(MethodResource):
@@ -53,11 +54,17 @@ class PredictionJobsResource(MethodResource):
         # Verify that the user may actually start a job for the given project
         # identifier.
         jwt_require_claim(project_id, "write")
-        result = design_flow(model, product_name, max_predictions, aerobic)
-        # Store the unfinished job in the result database.
-        save_job.delay(project_id, model_id, result.id)
+
+        # Job accepted. Before submitting the job, create a corresponding empty
+        # db entry.
+        job = DesignJob(project_id=project_id, model_id=model_id,
+                        status='PENDING')
+        db.session.add(job)
+        db.session.commit()
+        result = predict.delay(job.id, model, product_name, max_predictions,
+                               aerobic)
         return {
-            'id': result.id,
+            'id': job.id,
             'state': result.state,
         }, 202
 
