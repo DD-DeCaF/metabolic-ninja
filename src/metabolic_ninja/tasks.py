@@ -17,13 +17,13 @@
 import os
 from contextlib import contextmanager
 
+import sentry_sdk
 from cameo.api import design
 from cameo.models import universal
 from cameo.parallel import MultiprocessingView
 from celery.signals import task_postrun, task_prerun
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
-import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -18,10 +18,10 @@
 import logging
 import logging.config
 
+import sentry_sdk
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
-import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.contrib.fixers import ProxyFix
 
