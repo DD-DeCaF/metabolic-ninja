@@ -33,7 +33,3 @@ class PredictionJobRequestSchema(StrictSchema):
     product_name = fields.String(required=True)
     max_predictions = fields.Integer(required=True)
     aerobic = fields.Boolean(required=False)
-
-
-class JWTSchema(StrictSchema):
-    token = fields.String(name="Authorization", required=False)

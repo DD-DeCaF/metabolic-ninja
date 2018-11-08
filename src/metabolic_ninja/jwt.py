@@ -52,6 +52,7 @@ def init_app(app):
                 for key, value in g.jwt_claims['prj'].items()
             }
             g.jwt_valid = True
+            g.jwt_token = token
             logger.debug(f"JWT claims accepted: {g.jwt_claims}")
         except (jwt.JWTError, jwt.ExpiredSignatureError,
                 jwt.JWTClaimsError) as e:

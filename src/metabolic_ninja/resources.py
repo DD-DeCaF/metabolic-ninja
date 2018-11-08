@@ -16,13 +16,14 @@
 """Implement RESTful API endpoints using resources."""
 
 import requests
+from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 from werkzeug.exceptions import Unauthorized, Forbidden, NotFound
 
 from .app import app
 from .celery import celery_app
-from .schemas import JWTSchema, PredictionJobRequestSchema
+from .schemas import PredictionJobRequestSchema
 from .tasks import design_flow, save_job
 from .jwt import jwt_require_claim, jwt_required
 
@@ -31,9 +32,8 @@ class PredictionJobsResource(MethodResource):
 
     @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
-    @use_kwargs(JWTSchema(), location="headers")
     def post(self, model_id, project_id, product_name, max_predictions,
-             aerobic=False, token=None):
+             aerobic=False):
         """
         Create a design job.
 
@@ -48,8 +48,8 @@ class PredictionJobsResource(MethodResource):
         # Verify the request by loading the model from the model-storage
         # service.
         model = self.retrieve_model_json(model_id, {
-                "Authorization": token
-            })
+            "Authorization": g.jwt_token,
+        })
         # Verify that the user may actually start a job for the given project
         # identifier.
         jwt_require_claim(project_id, "write")
@@ -80,8 +80,7 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         return response.json()
 
-    @use_kwargs(JWTSchema(), location="headers")
-    def get(self, token):
+    def get(self):
         # Return a list of jobs that the user can see.
         pass
 
