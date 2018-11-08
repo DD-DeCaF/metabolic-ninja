@@ -23,7 +23,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from .app import app
-from .celery import celery_app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
 from .products import products
@@ -133,4 +132,4 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register('/predictions', PredictionJobsResource)
     register('/predictions/<string:job_id>', PredictionJobResource)
-    register('/products', ProductsResource) 
+    register('/products', ProductsResource)

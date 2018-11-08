@@ -28,7 +28,7 @@ class StrictSchema(Schema):
 
 
 class PredictionJobRequestSchema(StrictSchema):
-    organism_id = fields.Integer(required=True) 
+    organism_id = fields.Integer(required=True)
     model_id = fields.Integer(required=True)
     project_id = fields.Integer(required=True)
     product_name = fields.String(required=True)

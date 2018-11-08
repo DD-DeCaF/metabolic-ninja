@@ -18,16 +18,16 @@ import os
 
 import cameo
 
-from .app import app
-
 
 logger = logging.getLogger(__name__)
 _products = None
+
 
 def products():
     if _products is None:
         _get_products()
     return _products
+
 
 def _get_products():
     global _products
@@ -37,6 +37,7 @@ def _get_products():
         for m in cameo.models.metanetx_universal_model_bigg_rhea.metabolites
     ]
     logger.debug(f"Cached {len(_products)} products")
+
 
 if os.environ['ENVIRONMENT'] != 'development':
     _get_products()
