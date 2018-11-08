@@ -39,6 +39,16 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-caffeine
               key: SENTRY_DSN
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: POSTGRES_PASS
         command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
         resources:
           requests:
@@ -67,6 +77,18 @@ spec:
         volumeMounts:
           - mountPath: "/data"
             name: metabolic-ninja-caffeine
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.11
+        command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "200m"
+        volumeMounts:
+          - name: cloudsql-instance-credentials
+            mountPath: /secrets/cloudsql
+            readOnly: true
       volumes:
         - name: metabolic-ninja-caffeine
           persistentVolumeClaim:
