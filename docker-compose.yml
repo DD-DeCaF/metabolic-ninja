@@ -6,53 +6,75 @@ services:
       dockerfile: Dockerfile
     image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
-      - redis
+    - redis
+    - postgres
     networks:
       default:
       DD-DeCaF:
         aliases:
-          - metabolic-ninja
+        - metabolic-ninja
     ports:
-      - "${API_PORT:-8000}:8000"
+    - "${API_PORT:-8000}:8000"
     volumes:
-      - ".:/app"
+    - ".:/app"
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - FLASK_APP=src/metabolic_ninja/wsgi.py
-      - SCRIPT_NAME=${SCRIPT_NAME}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
-      - SENTRY_DSN=${SENTRY_DSN}
+    - ENVIRONMENT=${ENVIRONMENT:-development}
+    - FLASK_APP=src/metabolic_ninja/wsgi.py
+    - SCRIPT_NAME=${SCRIPT_NAME}
+    - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
+    - SENTRY_DSN=${SENTRY_DSN}
+    - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/mstorage}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
+    - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
+    - POSTGRES_PASS=${POSTGRES_PASS}
+    - IAM_API=https://api-staging.dd-decaf.eu/iam
     command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
     image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
-      - redis
+    - redis
     networks:
       default:
     volumes:
-      - ".:/app"
+    - ".:/app"
+    environment:
+    - SENTRY_DSN=${SENTRY_DSN}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
+    - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
+    - POSTGRES_PASS=${POSTGRES_PASS}
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
   flower:
     image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
-      - redis
+    - redis
     networks:
       default:
     ports:
-      - "${FLOWER_PORT:-5555}:5555"
+    - "${FLOWER_PORT:-5555}:5555"
     volumes:
-      - ".:/app"
+    - ".:/app"
     command: celery flower -A metabolic_ninja --broker=redis://redis:6379/0
 
   redis:
     image: redis
     ports:
-      - "6379"
+    - "6379"
     networks:
-      - default
+    - default
     command: redis-server --appendonly yes
+
+  postgres:
+    image: postgres:9.6-alpine
+    volumes:
+      - /var/lib/postgresql/data
+    networks:
+    - default
 
 # Additional services that the `web` service `depends_on` should usually only
 # be on the default network and not exposed on the general network, i.e.,

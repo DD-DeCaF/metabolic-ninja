@@ -20,14 +20,18 @@ import logging.config
 
 from flask import Flask, jsonify
 from flask_cors import CORS
-from raven.contrib.flask import Sentry
+from flask_migrate import Migrate
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.contrib.fixers import ProxyFix
+
+from . import jwt
 
 
 app = Flask(__name__)
 
 
-def init_app(application):
+def init_app(application, database):
     """Initialize the main app with config information and routes."""
     from metabolic_ninja.settings import current_config
     application.config.from_object(current_config())
@@ -35,11 +39,19 @@ def init_app(application):
     # Configure logging
     logging.config.dictConfig(application.config['LOGGING'])
 
+    # Configure the database connection.
+    database.init_app(application)
+    Migrate(application, database)
+
+    # Add middleware.
+    jwt.init_app(application)
+
     # Configure Sentry
     if application.config['SENTRY_DSN']:
-        sentry = Sentry(dsn=application.config['SENTRY_DSN'], logging=True,
-                        level=logging.ERROR)
-        sentry.init_app(application)
+        sentry_sdk.init(
+            dsn=application.config['SENTRY_DSN'],
+            integrations=[FlaskIntegration()],
+        )
 
     # Add routes and resources.
     from metabolic_ninja import resources

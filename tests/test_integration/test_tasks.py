@@ -13,10 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prepare the application for use by the WSGI server (gunicorn)."""
+"""Test expected functioning of the celery tasks."""
 
-from .app import app, init_app
-from .models import db
+import metabolic_ninja.tasks as tasks
+from metabolic_ninja.models import DesignJob
 
 
-init_app(app, db)
+def test_save_job(celery_worker, celery_app, session):
+    result = celery_app.AsyncResult("foo")
+    tmp = tasks.save_job.delay(1, 2, result.id)
+    # Wait for completion.
+    tmp.get()
+    job = session.query(DesignJob).filter_by(task_id=result.id).one()
+    assert job.project_id == 1
+    assert job.model_id == 2

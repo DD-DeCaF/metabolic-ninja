@@ -28,6 +28,8 @@ class StrictSchema(Schema):
 
 
 class PredictionJobRequestSchema(StrictSchema):
-    model_name = fields.String(required=True)
+    model_id = fields.Integer(required=True)
+    project_id = fields.Integer(required=True)
     product_name = fields.String(required=True)
     max_predictions = fields.Integer(required=True)
+    aerobic = fields.Boolean(required=False)

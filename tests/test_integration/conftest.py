@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prepare the application for use by the WSGI server (gunicorn)."""
 
-from .app import app, init_app
-from .models import db
+import pytest
 
 
-init_app(app, db)
+@pytest.fixture(scope='session')
+def celery_config():
+    return {
+        'broker_url': 'redis://redis:6379/0',
+        'result_backend': 'redis://redis:6379/1'
+    }

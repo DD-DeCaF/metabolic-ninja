@@ -15,28 +15,87 @@
 
 """Implement RESTful API endpoints using resources."""
 
-from celery.result import AsyncResult
+import requests
+from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from .app import app
 from .celery import celery_app
+from .jwt import jwt_require_claim, jwt_required
+from .models import DesignJob, db
 from .schemas import PredictionJobRequestSchema
 from .tasks import predict
 
 
 class PredictionJobsResource(MethodResource):
+
+    @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, model_name, product_name, max_predictions):
-        result = predict.delay(model_name, product_name, max_predictions)
+    def post(self, model_id, project_id, product_name, max_predictions,
+             aerobic=False):
+        """
+        Create a design job.
+
+        :param model_id: A numeric identifier coming from the model-storage
+            service.
+        :param project_id: Can be ``None`` in which case the job is public.
+        :param product_name:
+        :param max_predictions:
+        :param token: Value extracted from the request 'Authorization' header.
+        :return:
+        """
+        # Verify the request by loading the model from the model-storage
+        # service.
+        model = self.retrieve_model_json(model_id, {
+            "Authorization": g.jwt_token,
+        })
+        # Verify that the user may actually start a job for the given project
+        # identifier.
+        jwt_require_claim(project_id, "write")
+
+        # Job accepted. Before submitting the job, create a corresponding empty
+        # db entry.
+        job = DesignJob(project_id=project_id, model_id=model_id,
+                        status='PENDING')
+        db.session.add(job)
+        db.session.commit()
+        result = predict.delay(job.id, model, product_name, max_predictions,
+                               aerobic)
         return {
-            'id': result.id,
+            'id': job.id,
             'state': result.state,
         }, 202
 
+    @staticmethod
+    def retrieve_model_json(model_id, headers):
+        response = requests.get(
+            f'{app.config["MODEL_STORAGE_API"]}/models/{model_id}',
+            headers=headers)
+        if response.status_code == 401:
+            message = response.json().get('message', "No error message")
+            raise Unauthorized(f"Invalid credentials ({message}).")
+        elif response.status_code == 403:
+            message = response.json().get('message', "No error message")
+            raise Forbidden(f"Insufficient permissions to access model "
+                            f"{model_id} ({message}).")
+        elif response.status_code == 404:
+            raise NotFound(f"No model with id {model_id}.")
+        # In case any unexpected errors occurred this will trigger an
+        # internal server error.
+        response.raise_for_status()
+        return response.json()['model_serialized']
+
+    def get(self):
+        # Return a list of jobs that the user can see.
+        pass
+
 
 class PredictionJobResource(MethodResource):
+
     def get(self, task_id):
-        result = AsyncResult(id=task_id, app=celery_app)
+        result = celery_app.AsyncResult(id=task_id)
         if not result.ready():
             return {
                 'id': result.id,
@@ -48,11 +107,11 @@ class PredictionJobResource(MethodResource):
                     'state': result.state,
                     'result': result.get(),
                 }
-            except Exception as e:
+            except Exception as error:
                 return {
                     'state': result.state,
-                    'exception': type(e).__name__,
-                    'message': str(e),
+                    'exception': type(error).__name__,
+                    'message': str(error),
                 }
 
 
@@ -63,5 +122,5 @@ def init_app(app):
         docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
-    register('/predict', PredictionJobsResource)
-    register('/predict/<string:task_id>', PredictionJobResource)
+    register('/predictions', PredictionJobsResource)
+    register('/predictions/<string:task_id>', PredictionJobResource)
