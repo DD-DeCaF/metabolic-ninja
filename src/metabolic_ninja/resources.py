@@ -16,7 +16,6 @@
 """Implement RESTful API endpoints using resources."""
 
 import requests
-from cameo import models
 from flask import g
 from flask_apispec import MethodResource, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
@@ -27,6 +26,7 @@ from .app import app
 from .celery import celery_app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
+from .products import products
 from .schemas import PredictionJobRequestSchema
 from .tasks import predict
 
@@ -121,8 +121,7 @@ class PredictionJobResource(MethodResource):
 
 class ProductsResource(MethodResource):
     def get(self):
-        return [{'name': m.name} for m in
-                models.metanetx_universal_model_bigg_rhea.metabolites]
+        return products()
 
 
 def init_app(app):
