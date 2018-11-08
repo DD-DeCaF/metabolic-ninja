@@ -55,11 +55,6 @@ def design_flow(model_obj, product_name, max_predictions, aerobic):
     """Define a workflow and return its AsyncResult."""
     chain_def = chain(
         # TODO: Move save_job here.
-        # find_product.s(product_name) |
-        # find_pathways.s(model, max_predictions) |
-        # Check current cameo workflow. Either apply optimizations
-        # sequentially or in a parallel group.
-        # optimize.s(model) |
         predict.s(model_obj, product_name, max_predictions, aerobic) |
         save_result.s()
     )
@@ -75,31 +70,6 @@ def save_job(project_id, model_id, uuid):
         session.add(job)
         session.commit()
 
-
-# @celery_app.task()
-# def find_product(product_name):
-#     # Find the product name via MetaNetX.
-#     raise IOError("intentional test")
-
-
-# @celery_app.task()
-# def find_pathways(model_obj, product, max_predictions, aerobic):
-#     model = model_from_dict(model_obj)
-#     design.options.max_pathway_predictions = max_predictions
-#     pathways = design.predict_pathways(
-#         product=product,
-#         hosts=[model],
-#         database=universal.metanetx_universal_model_bigg_rhea,
-#         aerobic=aerobic
-#     )
-#     return pathways
-
-
-# @celery_app.task()
-# def optimize(aerobic, pathways):
-#     # Run optimizations on each pathway applied to the model.
-#     reports = design.optimize_strains(pathways, aerobic=aerobic)
-#     return reports
 
 @celery_app.task
 def predict(model_obj, product, max_predictions, aerobic):
