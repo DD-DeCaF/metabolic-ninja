@@ -78,7 +78,7 @@ class PredictionJobsResource(MethodResource):
         # In case any unexpected errors occurred this will trigger an
         # internal server error.
         response.raise_for_status()
-        return response.json()
+        return response.json()['model_serialized']
 
     def get(self):
         # Return a list of jobs that the user can see.
