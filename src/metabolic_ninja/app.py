@@ -21,7 +21,8 @@ import logging.config
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
-from raven.contrib.flask import Sentry
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.contrib.fixers import ProxyFix
 
 from . import jwt
@@ -47,9 +48,10 @@ def init_app(application, database):
 
     # Configure Sentry
     if application.config['SENTRY_DSN']:
-        sentry = Sentry(dsn=application.config['SENTRY_DSN'], logging=True,
-                        level=logging.ERROR)
-        sentry.init_app(application)
+        sentry_sdk.init(
+            dsn=application.config['SENTRY_DSN'],
+            integrations=[FlaskIntegration()],
+        )
 
     # Add routes and resources.
     from metabolic_ninja import resources

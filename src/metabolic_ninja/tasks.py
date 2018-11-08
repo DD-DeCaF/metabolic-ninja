@@ -23,6 +23,8 @@ from cameo.parallel import MultiprocessingView
 from celery.signals import task_postrun, task_prerun
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
+import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -31,6 +33,12 @@ from .models import DesignJob
 
 
 logger = get_task_logger(__name__)
+# Initialize Sentry. Adding the celery integration will automagically report
+# errors from all tasks.
+sentry_sdk.init(
+    dsn=os.environ.get('SENTRY_DSN'),
+    integrations=[CeleryIntegration()],
+)
 # Timeouts are given in minutes.
 design.options.pathway_prediction_timeout = 60
 design.options.heuristic_optimization_timeout = 120

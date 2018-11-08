@@ -1,7 +1,7 @@
 Flask
 Flask-Cors
 flask-apispec
-raven[flask]
+sentry-sdk[flask]
 gunicorn
 gevent
 celery[redis]

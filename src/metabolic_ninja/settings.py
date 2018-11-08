@@ -54,6 +54,7 @@ class Default:
         self.APISPEC_SWAGGER_UI_URL = "/"
         self.CORS_ORIGINS = os.environ['ALLOWED_ORIGINS'].split(',')
         self.SENTRY_DSN = os.environ.get('SENTRY_DSN')
+        # TODO: Configure this with the new sentry-sdk
         self.SENTRY_CONFIG = {
             'ignore_exceptions': [
                 werkzeug.exceptions.BadRequest,
