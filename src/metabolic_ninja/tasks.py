@@ -78,6 +78,7 @@ def task_postrun_handler(**kwargs):
         job_id = kwargs['args'][0]
         job = session.query(DesignJob).filter_by(id=job_id).one()
         job.status = kwargs['state']
+        job.result = kwargs['result']
         session.add(job)
         session.commit()
 
