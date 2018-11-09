@@ -61,7 +61,8 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-caffeine
               key: POSTGRES_PASS
-        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
+        command: ["/bin/sh", "-c"]
+        args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
         resources:
           requests:
             cpu: "100m"
