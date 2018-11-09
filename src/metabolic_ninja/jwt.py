@@ -33,14 +33,12 @@ def init_app(app):
             logger.debug("No JWT provided")
             g.jwt_valid = False
             g.jwt_claims = {'prj': {}}
-            g.jwt_token = ''
             return
 
         auth = request.headers['Authorization']
         if not auth.startswith('Bearer '):
             g.jwt_valid = False
             g.jwt_claims = {'prj': {}}
-            g.jwt_token = ''
             return
 
         try:
