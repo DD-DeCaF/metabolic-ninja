@@ -28,12 +28,11 @@ class StrictSchema(Schema):
 
 
 class PredictionJobRequestSchema(StrictSchema):
-    organism_id = fields.Integer(required=True)
     model_id = fields.Integer(required=True)
+    organism_id = fields.Integer(required=True)
     project_id = fields.Integer(required=True)
     product_name = fields.String(required=True)
     max_predictions = fields.Integer(required=True)
-    bigg = fields.Boolean()
-    kegg = fields.Boolean()
-    rhea = fields.Boolean()
-    aerobic = fields.Boolean(required=False)
+    bigg = fields.Boolean(default=True, required=False)
+    rhea = fields.Boolean(default=True, required=False)
+    aerobic = fields.Boolean(default=False, required=False)

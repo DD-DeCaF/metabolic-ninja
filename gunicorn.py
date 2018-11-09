@@ -44,5 +44,6 @@ if _config == "production":
 else:
     # FIXME: The number of workers is up for debate. At least for testing more
     # than one worker could make sense.
+    preload_app = True
     workers = 1
-    reload = True
+    reload = False

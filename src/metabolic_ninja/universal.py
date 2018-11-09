@@ -13,33 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import logging
-import os
 
-import cameo
-
-from .universal import UNIVERSAL_SOURCES
+from cameo.models import universal
 
 
 logger = logging.getLogger(__name__)
-_products = None
 
 
-def products():
-    if _products is None:
-        _get_products()
-    return _products
+UNIVERSAL_SOURCES = {
+    (True, False): universal.metanetx_universal_model_bigg,
+    (True, True): universal.metanetx_universal_model_bigg_rhea,
+    (False, True): universal.metanetx_universal_model_rhea,
+}
 
 
-def _get_products():
-    global _products
-    logger.debug("Retrieving product list from cameo")
-    _products = [
-        {'name': m.name}
-        for m in cameo.models.metanetx_universal_model_bigg_rhea.metabolites
-    ]
-    logger.debug(f"Cached {len(_products)} products")
-
-
-if os.environ['ENVIRONMENT'] != 'development':
-    _get_products()
+# We explicitly access the models in order to pre-load them.
+for db in UNIVERSAL_SOURCES.values():
+    logger.debug("%s: %d reactions and %d metabolites.",
+                 db.id, len(db.reactions), len(db.metabolites))

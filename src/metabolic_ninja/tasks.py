@@ -16,24 +16,29 @@
 
 import os
 from contextlib import contextmanager
+from itertools import chain as iter_chain
 
 import sentry_sdk
 from cameo.api import design
-from cameo.models import universal
-from cameo.parallel import MultiprocessingView
-from celery.signals import task_postrun, task_prerun
+from cameo.strain_design import DifferentialFVA, OptGene
 from cameo.strain_design.pathway_prediction import PathwayPredictor
-from cameo.util import IntelliContainer
-from celery import chain
+from cameo.strain_design.heuristic.evolutionary.objective_functions import \
+    biomass_product_coupled_min_yield
+from cameo.strain_design.heuristic.evolutionary.objective_functions import \
+    product_yield
+from celery import chain, chord
+from celery.signals import task_prerun
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
+from cobra.io.dict import reaction_to_dict
+from cobra.exceptions import OptimizationError
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .celery import celery_app
 from .models import DesignJob
-
+from .universal import UNIVERSAL_SOURCES
 
 logger = get_task_logger(__name__)
 # Initialize Sentry. Adding the celery integration will automagically report
@@ -42,22 +47,6 @@ sentry_sdk.init(
     dsn=os.environ.get('SENTRY_DSN'),
     integrations=[CeleryIntegration()],
 )
-
-
-UNIVERSAL_SOURCES = {
-    (True, False): universal.metanetx_universal_model_bigg,
-    (True, True): universal.metanetx_universal_model_bigg_rhea,
-    (False, True): universal.metanetx_universal_model_rhea,
-}
-
-
-# Timeouts are given in minutes.
-design.options.pathway_prediction_timeout = 60
-design.options.heuristic_optimization_timeout = 120
-design.options.differential_fva = True
-design.options.heuristic_optimization = True
-design.options.differential_fva_points = 10
-design.database = universal.metanetx_universal_model_bigg_rhea
 
 
 @contextmanager
@@ -73,7 +62,7 @@ def db_session():
     session.close()
 
 
-@task_prerun.connect
+@task_prerun.connect(sender="metabolic_ninja.tasks.find_product")
 def task_prerun_handler(**kwargs):
     with db_session() as session:
         job_id = kwargs['args'][0]
@@ -84,84 +73,165 @@ def task_prerun_handler(**kwargs):
         session.commit()
 
 
-@task_postrun.connect
-def task_postrun_handler(**kwargs):
+@celery_app.task()
+def on_error(request, exc, traceback):
     with db_session() as session:
-        job_id = kwargs['args'][0]
+        job_id = request.kwargs["job_id"]
         job = session.query(DesignJob).filter_by(id=job_id).one()
-        job.status = kwargs['state']
-        job.result = kwargs['result']
+        job.status = "FAILURE"
         session.add(job)
         session.commit()
 
 
-@celery_app.task()
-def find_product(product_name, databases=(True, True)):
+def predict(job_id, model_obj, product_name, max_predictions, aerobic,
+            databases):
+    # Select the universal reaction database from the BiGG, RHEA pair.
     source = UNIVERSAL_SOURCES[databases]
+    # Configure the model object for cameo.
+    model = model_from_dict(model_obj["model_serialized"])
+    model.solver = "cplex"
+    if not aerobic and "EX_o2_e" in model.reactions:
+        model.reactions.EX_o2_e.lower_bound = 0
+    model.biomass = model_obj["default_biomass_reaction"]
+    # We have to identify a carbon source from the medium.
+    model.carbon_source = "EX_glc__D_e"
+    # Define the workflow.
+    chain_def = chain(
+        find_product.s(product_name, source),
+        find_pathways.s(model, max_predictions, source),
+        optimize.s(model, differential_fva_optimization, job_id)
+    )
+    return chain_def()
+
+
+@celery_app.task()
+def find_product(product_name, source):
     # Find the product name via the cameo designer. In a future far, far away
     # this should be a call to a web service.
     return design.translate_product_to_universal_reactions_model_metabolite(
         product_name, source
-    ), source
+    )
 
 
 @celery_app.task()
-def find_pathways(model_obj, max_predictions, aerobic, previous):
-    product, source = previous
-    model = model_from_dict(model_obj["model_serialized"])
-    if not aerobic and "EX_o2_e" in model.reactions:
-        model.reactions.EX_o2_e.lower_bound = 0
+def find_pathways(product, model, max_predictions, source):
     predictor = PathwayPredictor(model, universal_model=source)
     return predictor.run(
         product,
         max_predictions=max_predictions,
         timeout=60,
         silent=True
-    ), source
+    )
 
 
 @celery_app.task()
-def optimize(aerobic, pathways):
-    # Run optimizations on each pathway applied to the model.
-    reports = design.optimize_strains(pathways, aerobic=aerobic)
-    return reports
+def optimize(pathways, model, method, job_id):
+    return chord(chain(method.si(p, model), evaluate_prediction.s(p, model))
+                 for p in pathways)(concatenate.s(job_id))
 
 
-@celery_app.task
-def predict(model_obj, product, max_predictions, aerobic):
-    # Initialize a cameo host with an `IntelliContainer` which basically
-    # works like a `dict`.
-    host = Host(name=model_obj["organism_id"], models=IntelliContainer())
-    model = model_from_dict(model_obj["model_serialized"])
-    model.solver = "cplex"
-    # We add more attributes for cameo.
-    model.biomass = model_obj["default_biomass_reaction"]
-    # We have to identify a carbon source from the medium.
-    model.carbon_source = None
-    host.models[model_obj["name"]] = model
-    design.options.max_pathway_predictions = max_predictions
-    view = MultiprocessingView(processes=3)
-    reports = design(
-        product=product,
-        database=universal.metanetx_universal_model_bigg_rhea,
-        hosts=[host],
-        view=view,
-        aerobic=aerobic
-    )
-    return reports
+@celery_app.task()
+def differential_fva_optimization(pathway, model):
+    with model:
+        pathway.apply(model)
+        predictor = DifferentialFVA(
+            design_space_model=model,
+            objective=pathway.product.id,
+            variables=[model.biomass],
+            points=10
+        )
+        try:
+            designs = predictor.run(progress=False)
+        except ZeroDivisionError as error:
+            logger.warning("Encountered the following error in DiffFVA.",
+                           exc_info=error)
+            designs = None
+    return designs, "PathwayPredictor+DifferentialFVA"
 
 
-@celery_app.task
-def prediction_to_json(reports):
-    pass
+@celery_app.task()
+def heuristic_optimization(pathway, model):
+    with model:
+        pathway.apply(model)
+        predictor = OptGene(
+            model=model,
+            plot=False
+        )
+        design = predictor.run(
+            target=pathway.product.id,
+            biomass=model.biomass,
+            substrate=model.carbon_source,
+            max_evaluations=1500,
+            max_knockouts=15,
+            max_time=120
+        )
+    result = evaluate_prediction.apply_async(
+        args=(model, pathway, design, "PathwayPredictor+OptGene"))
+    obj = result.get()
+    return obj
 
 
-@celery_app.task(bind=True, ignore_result=True)
-def save_result(self, results):
+@celery_app.task()
+def evaluate_prediction(previous, pathway, model):
+    designs, method = previous
+    if designs is None:
+        return []
+    pyield = product_yield(pathway.product, model.carbon_source)
+    bpcy = biomass_product_coupled_min_yield(
+        model.biomass, pathway.product, model.carbon_source)
+    results = []
+    with model:
+        pathway.apply(model)
+        for design in designs._designs:
+            design.apply(model)
+            try:
+                model.objective = model.biomass
+                solution = model.optimize()
+                p_yield = pyield(model, solution, pathway.product)
+                bpc_yield = bpcy(model, solution, pathway.product)
+                target_flux = solution[pathway.product.id]
+                biomass = solution[model.biomass]
+            except (OptimizationError, ZeroDivisionError):
+                p_yield = None
+                bpc_yield = None
+                target_flux = None
+                biomass = None
+            results.append({
+                "manipulations": designs,
+                "heterologous_reactions": pathway.reactions,
+                "synthetic_reactions": pathway.exchanges,
+                "fitness": bpc_yield,
+                "yield": p_yield,
+                "product": target_flux,
+                "biomass": biomass,
+                "method": method
+            })
+    return results
+
+
+@celery_app.task()
+def concatenate(results, job_id):
+    reactions = {}
+    final = []
+    # Flatten lists and convert design and pathway to dictionary.
+    for row in iter_chain.from_iterable(results):
+        reactions.update(**{
+            r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
+        })
+        row["manipulations"] = [t._repr_html_() for t in row["manipulations"]]
+        row["heterologous_reactions"] = [
+            r.id for r in row["heterologous_reactions"]]
+        row["synthetic_reactions"] = [
+            r.id for r in row["synthetic_reactions"]]
+        final.append(row)
+    result = {
+        "table": final,
+        "reactions": reactions
+    }
     with db_session() as session:
-        job = session.query(DesignJob).filter_by(task_id=self.request.id).one()
-        job.result = results
-        job.is_complete = True
-        job.status = self.state
+        job = session.query(DesignJob).filter_by(id=job_id).one()
+        job.status = "SUCCESS"
+        job.result = result
         session.add(job)
         session.commit()
+    return result

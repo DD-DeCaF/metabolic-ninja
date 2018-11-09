@@ -34,8 +34,8 @@ class PredictionJobsResource(MethodResource):
 
     @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, model_id, project_id, product_name, max_predictions,
-             aerobic=False):
+    def post(self, organism_id, model_id, project_id, product_name,
+             max_predictions, bigg, rhea, aerobic):
         """
         Create a design job.
 
@@ -44,8 +44,11 @@ class PredictionJobsResource(MethodResource):
         :param project_id: Can be ``None`` in which case the job is public.
         :param product_name:
         :param max_predictions:
-        :param token: Value extracted from the request 'Authorization' header.
+        :param bigg: bool
+        :param rhea: bool
+        :param aerobic: bool
         :return:
+        random comment
         """
         # Verify the request by loading the model from the model-storage
         # service.
@@ -57,17 +60,17 @@ class PredictionJobsResource(MethodResource):
         jwt_require_claim(project_id, "write")
 
         # Job accepted. Before submitting the job, create a corresponding empty
-        # db entry.
-        job = DesignJob(project_id=project_id, model_id=model_id,
-                        status='PENDING')
+        # database entry.
+        job = DesignJob(project_id=project_id, organism_id=organism_id,
+                        model_id=model_id, status='PENDING')
         db.session.add(job)
         db.session.commit()
-        result = predict.delay(job.id, model, product_name, max_predictions,
-                               aerobic)
+        result = predict(job.id, model, product_name, max_predictions, aerobic,
+                         (bigg, rhea))
         return {
-            'id': job.id,
-            'state': result.state,
-        }, 202
+                   'id': job.id,
+                   'state': result.state,
+               }, 202
 
     @staticmethod
     def retrieve_model_json(model_id, headers):
@@ -86,7 +89,7 @@ class PredictionJobsResource(MethodResource):
         # In case any unexpected errors occurred this will trigger an
         # internal server error.
         response.raise_for_status()
-        return response.json()['model_serialized']
+        return response.json()
 
     def get(self):
         # Return a list of jobs that the user can see.
@@ -96,6 +99,7 @@ class PredictionJobsResource(MethodResource):
 class PredictionJobResource(MethodResource):
 
     def get(self, job_id):
+        job_id = int(job_id)
         try:
             job = DesignJob.query.filter(
                 DesignJob.id == job_id,
@@ -114,6 +118,8 @@ class PredictionJobResource(MethodResource):
                 'id': job.id,
                 'task_id': job.task_id,
                 'status': job.status,
+                'model_id': job.model_id,
+                'organism_id': job.organism_id,
                 'result': job.result,
             }, status
 
@@ -125,6 +131,7 @@ class ProductsResource(MethodResource):
 
 def init_app(app):
     """Register API resources on the provided Flask application."""
+
     def register(path, resource):
         app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
         docs.register(resource, endpoint=resource.__name__)
