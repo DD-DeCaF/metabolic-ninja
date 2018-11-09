@@ -25,9 +25,9 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
-from .products import products
 from .schemas import PredictionJobRequestSchema
 from .tasks import predict
+from .universal import UNIVERSAL_SOURCES
 
 
 class PredictionJobsResource(MethodResource):
@@ -126,7 +126,11 @@ class PredictionJobResource(MethodResource):
 
 class ProductsResource(MethodResource):
     def get(self):
-        return products()
+        database = UNIVERSAL_SOURCES[(True, True)]
+        return [
+            {'name': m.name}
+            for m in database.metabolites
+        ]
 
 
 def init_app(app):
