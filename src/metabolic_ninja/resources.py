@@ -52,25 +52,26 @@ class PredictionJobsResource(MethodResource):
         """
         # Verify the request by loading the model from the model-storage
         # service.
-        model = self.retrieve_model_json(model_id, {
+        headers = {
             "Authorization": g.jwt_token,
-        })
+        }
+        model = self.retrieve_model_json(model_id, headers)
         # Verify that the user may actually start a job for the given project
         # identifier.
         jwt_require_claim(project_id, "write")
-
         # Job accepted. Before submitting the job, create a corresponding empty
         # database entry.
         job = DesignJob(project_id=project_id, organism_id=organism_id,
                         model_id=model_id, status='PENDING')
         db.session.add(job)
         db.session.commit()
-        result = predict(job.id, model, product_name, max_predictions, aerobic,
-                         (bigg, rhea))
+        # Submit a prediction to the celery queue.
+        result = predict.delay(model, product_name, max_predictions,
+                               aerobic, (bigg, rhea), job.id)
         return {
-                   'id': job.id,
-                   'state': result.state,
-               }, 202
+            'id': job.id,
+            'state': result.state,
+        }, 202
 
     @staticmethod
     def retrieve_model_json(model_id, headers):

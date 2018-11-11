@@ -26,8 +26,7 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import \
     biomass_product_coupled_min_yield
 from cameo.strain_design.heuristic.evolutionary.objective_functions import \
     product_yield
-from celery import chain, chord
-from celery.signals import task_prerun
+from celery import group
 from celery.utils.log import get_task_logger
 from cobra.io import model_from_dict
 from cobra.io.dict import reaction_to_dict
@@ -39,6 +38,7 @@ from sqlalchemy.orm import sessionmaker
 from .celery import celery_app
 from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
+
 
 logger = get_task_logger(__name__)
 # Initialize Sentry. Adding the celery integration will automagically report
@@ -62,29 +62,39 @@ def db_session():
     session.close()
 
 
-@task_prerun.connect(sender="metabolic_ninja.tasks.find_product")
-def task_prerun_handler(**kwargs):
-    with db_session() as session:
-        job_id = kwargs['args'][0]
-        job = session.query(DesignJob).filter_by(id=job_id).one()
-        job.status = 'STARTED'
-        job.task_id = kwargs['task'].request.id
-        session.add(job)
-        session.commit()
-
-
 @celery_app.task()
-def on_error(request, exc, traceback):
+def fail_workflow(request, exc, traceback, job_id):
     with db_session() as session:
-        job_id = request.kwargs["job_id"]
         job = session.query(DesignJob).filter_by(id=job_id).one()
         job.status = "FAILURE"
         session.add(job)
         session.commit()
 
 
-def predict(job_id, model_obj, product_name, max_predictions, aerobic,
-            databases):
+@celery_app.task(bind=True)
+def predict(self, model_obj, product_name, max_predictions, aerobic,
+            databases, job_id):
+    """
+
+    Ensure that `job_id` is the last argument so that the
+    `task_prerun_handler` properly handles the argument.
+
+    :param self:
+    :param model_obj:
+    :param product_name:
+    :param max_predictions:
+    :param aerobic:
+    :param databases:
+    :param job_id:
+    :return:
+    """
+    # Update the job status.
+    with db_session() as session:
+        job = session.query(DesignJob).filter_by(id=job_id).one()
+        job.status = 'STARTED'
+        job.task_id = self.request.id
+        session.add(job)
+        session.commit()
     # Select the universal reaction database from the BiGG, RHEA pair.
     source = UNIVERSAL_SOURCES[databases]
     # Configure the model object for cameo.
@@ -96,12 +106,14 @@ def predict(job_id, model_obj, product_name, max_predictions, aerobic,
     # We have to identify a carbon source from the medium.
     model.carbon_source = "EX_glc__D_e"
     # Define the workflow.
-    chain_def = chain(
-        find_product.s(product_name, source),
-        find_pathways.s(model, max_predictions, source),
-        optimize.s(model, differential_fva_optimization, job_id)
-    )
-    return chain_def()
+    workflow = (
+        find_product.s(product_name, source) |
+        find_pathways.s(model, max_predictions, source) |
+        optimize.s(model) |
+        concatenate.s() |
+        persist.s(job_id)
+    ).on_error(fail_workflow.s(job_id))
+    return self.replace(workflow)
 
 
 @celery_app.task()
@@ -124,10 +136,15 @@ def find_pathways(product, model, max_predictions, source):
     )
 
 
-@celery_app.task()
-def optimize(pathways, model, method, job_id):
-    return chord(chain(method.si(p, model), evaluate_prediction.s(p, model))
-                 for p in pathways)(concatenate.s(job_id))
+@celery_app.task(bind=True)
+def optimize(self, pathways, model):
+    return self.replace(group(
+        (
+            differential_fva_optimization.si(p, model) |
+            evaluate_prediction.s(p, model, "PathwayPredictor+DifferentialFVA")
+        )
+        for p in pathways)
+    )
 
 
 @celery_app.task()
@@ -146,7 +163,7 @@ def differential_fva_optimization(pathway, model):
             logger.warning("Encountered the following error in DiffFVA.",
                            exc_info=error)
             designs = None
-    return designs, "PathwayPredictor+DifferentialFVA"
+    return designs
 
 
 @celery_app.task()
@@ -157,7 +174,7 @@ def heuristic_optimization(pathway, model):
             model=model,
             plot=False
         )
-        design = predictor.run(
+        designs = predictor.run(
             target=pathway.product.id,
             biomass=model.biomass,
             substrate=model.carbon_source,
@@ -165,15 +182,11 @@ def heuristic_optimization(pathway, model):
             max_knockouts=15,
             max_time=120
         )
-    result = evaluate_prediction.apply_async(
-        args=(model, pathway, design, "PathwayPredictor+OptGene"))
-    obj = result.get()
-    return obj
+    return designs
 
 
 @celery_app.task()
-def evaluate_prediction(previous, pathway, model):
-    designs, method = previous
+def evaluate_prediction(designs, pathway, model, method):
     if designs is None:
         return []
     pyield = product_yield(pathway.product, model.carbon_source)
@@ -210,7 +223,7 @@ def evaluate_prediction(previous, pathway, model):
 
 
 @celery_app.task()
-def concatenate(results, job_id):
+def concatenate(results):
     reactions = {}
     final = []
     # Flatten lists and convert design and pathway to dictionary.
@@ -224,10 +237,14 @@ def concatenate(results, job_id):
         row["synthetic_reactions"] = [
             r.id for r in row["synthetic_reactions"]]
         final.append(row)
-    result = {
+    return {
         "table": final,
         "reactions": reactions
     }
+
+
+@celery_app.task()
+def persist(result, job_id):
     with db_session() as session:
         job = session.query(DesignJob).filter_by(id=job_id).one()
         job.status = "SUCCESS"
