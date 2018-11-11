@@ -65,9 +65,9 @@ spec:
         args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
         resources:
           requests:
-            cpu: "100m"
-          limits:
             cpu: "200m"
+          limits:
+            cpu: "2000m"
       - name: worker
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
