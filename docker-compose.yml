@@ -69,7 +69,7 @@ services:
   redis:
     image: redis
     ports:
-    - "6379"
+    - "${REDIS_PORT:-6379}:6379"
     networks:
     - default
     command: redis-server --appendonly yes
