@@ -21,16 +21,14 @@ from itertools import chain as iter_chain
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
+from cameo.strain_design.heuristic.evolutionary.objective_functions import (
+    biomass_product_coupled_min_yield, product_yield)
 from cameo.strain_design.pathway_prediction import PathwayPredictor
-from cameo.strain_design.heuristic.evolutionary.objective_functions import \
-    biomass_product_coupled_min_yield
-from cameo.strain_design.heuristic.evolutionary.objective_functions import \
-    product_yield
 from celery import group
 from celery.utils.log import get_task_logger
+from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
 from cobra.io.dict import reaction_to_dict
-from cobra.exceptions import OptimizationError
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
