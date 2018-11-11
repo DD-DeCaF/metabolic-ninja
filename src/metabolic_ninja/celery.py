@@ -32,5 +32,5 @@ celery_app.conf.update(
     result_expires=604800,  # 7 days
     task_serializer='pickle',
     result_serializer='pickle',
-    accept_content=['pickle', 'application/x-python-serialize']
+    accept_content=['pickle']
 )
