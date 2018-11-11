@@ -74,6 +74,8 @@ spec:
         env:
         - name: REDIS_HOST
           value: localhost:6379
+        - name: C_FORCE_ROOT
+          value: "1"
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
