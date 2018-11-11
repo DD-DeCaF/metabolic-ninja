@@ -75,9 +75,7 @@ def fail_workflow(request, exc, traceback, job_id):
 def predict(self, model_obj, product_name, max_predictions, aerobic,
             databases, job_id):
     """
-
-    Ensure that `job_id` is the last argument so that the
-    `task_prerun_handler` properly handles the argument.
+    Define and start a design prediction workflow.
 
     :param self:
     :param model_obj:
@@ -87,6 +85,7 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     :param databases:
     :param job_id:
     :return:
+
     """
     # Update the job status.
     with db_session() as session:
@@ -195,8 +194,8 @@ def evaluate_prediction(designs, pathway, model, method):
     results = []
     with model:
         pathway.apply(model)
-        for design in designs._designs:
-            design.apply(model)
+        for design_result in designs._designs:
+            design_result.apply(model)
             try:
                 model.objective = model.biomass
                 solution = model.optimize()
@@ -210,7 +209,7 @@ def evaluate_prediction(designs, pathway, model, method):
                 target_flux = None
                 biomass = None
             results.append({
-                "manipulations": designs,
+                "manipulations": design_result,
                 "heterologous_reactions": pathway.reactions,
                 "synthetic_reactions": pathway.exchanges,
                 "fitness": bpc_yield,
@@ -231,7 +230,8 @@ def concatenate(results):
         reactions.update(**{
             r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
         })
-        row["manipulations"] = [t._repr_html_() for t in row["manipulations"]]
+        row["manipulations"] = [
+            t._repr_html_() for t in row["manipulations"].targets]
         row["heterologous_reactions"] = [
             r.id for r in row["heterologous_reactions"]]
         row["synthetic_reactions"] = [

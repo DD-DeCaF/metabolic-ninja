@@ -136,7 +136,6 @@ class ProductsResource(MethodResource):
 
 def init_app(app):
     """Register API resources on the provided Flask application."""
-
     def register(path, resource):
         app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
         docs.register(resource, endpoint=resource.__name__)
