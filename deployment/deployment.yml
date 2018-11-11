@@ -22,7 +22,7 @@ spec:
         - containerPort: 8000
         env:
         - name: ENVIRONMENT
-          value: staging
+          value: production
         - name: SCRIPT_NAME
           value: /pathways-caffeine
         - name: FLASK_APP
