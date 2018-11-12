@@ -81,6 +81,22 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-caffeine
               key: SENTRY_DSN
+        - name: POSTGRES_HOST
+          value: localhost
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: POSTGRES_PASS
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
