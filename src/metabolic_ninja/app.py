@@ -60,6 +60,12 @@ def init_app(application, database):
     # Add CORS information for all resources.
     CORS(application)
 
+
+    # Add readiness check endpoint
+    ############################################################################
+    from . import healthz
+    healthz.init_app(application)
+
     # Add an error handler for webargs parser error, ensuring a JSON response
     # including all error messages produced from the parser.
     @app.errorhandler(422)
