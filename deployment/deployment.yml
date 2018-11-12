@@ -63,6 +63,11 @@ spec:
               key: POSTGRES_PASS
         command: ["/bin/sh", "-c"]
         args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
+        readinessProbe:
+          httpGet:
+            path: /pathways-caffeine/healthz
+            port: 8000
+          initialDelaySeconds: 5
         resources:
           requests:
             cpu: "200m"
