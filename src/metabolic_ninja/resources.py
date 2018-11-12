@@ -50,15 +50,15 @@ class PredictionJobsResource(MethodResource):
         :return:
         random comment
         """
+        # Verify that the user may actually start a job for the given project
+        # identifier.
+        jwt_require_claim(project_id, "write")
         # Verify the request by loading the model from the model-storage
         # service.
         headers = {
             "Authorization": g.jwt_token,
         }
         model = self.retrieve_model_json(model_id, headers)
-        # Verify that the user may actually start a job for the given project
-        # identifier.
-        jwt_require_claim(project_id, "write")
         # Job accepted. Before submitting the job, create a corresponding empty
         # database entry.
         job = DesignJob(project_id=project_id, organism_id=organism_id,
