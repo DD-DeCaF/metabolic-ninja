@@ -22,4 +22,3 @@
 # import metabolic_ninja.tasks as tasks
 # from metabolic_ninja.models import DesignJob
 # from metabolic_ninja.universal import UNIVERSAL_SOURCES
-
