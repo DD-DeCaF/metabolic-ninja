@@ -25,7 +25,7 @@ script:
   - make isort
   - make license
   - make safety
-  # - make test-travis
+  - make test-travis
 
 before_deploy:
   - docker push ${IMAGE_REPO}:${TRAVIS_COMMIT::12}

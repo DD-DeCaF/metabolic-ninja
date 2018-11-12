@@ -15,15 +15,10 @@
 
 """Test expected functioning of the celery tasks."""
 
-import metabolic_ninja.tasks as tasks
-from metabolic_ninja.models import DesignJob
 
+# from cameo import load_model
 
-def test_save_job(celery_worker, celery_app, session):
-    result = celery_app.AsyncResult("foo")
-    tmp = tasks.save_job.delay(1, 2, result.id)
-    # Wait for completion.
-    tmp.get()
-    job = session.query(DesignJob).filter_by(task_id=result.id).one()
-    assert job.project_id == 1
-    assert job.model_id == 2
+# Importing currently takes way too long to be useful in development.
+# import metabolic_ninja.tasks as tasks
+# from metabolic_ninja.models import DesignJob
+# from metabolic_ninja.universal import UNIVERSAL_SOURCES

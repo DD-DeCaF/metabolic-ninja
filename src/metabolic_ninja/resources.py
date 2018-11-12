@@ -25,17 +25,17 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
-from .products import products
 from .schemas import PredictionJobRequestSchema
 from .tasks import predict
+from .universal import UNIVERSAL_SOURCES
 
 
 class PredictionJobsResource(MethodResource):
 
     @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, model_id, project_id, product_name, max_predictions,
-             aerobic=False):
+    def post(self, organism_id, model_id, project_id, product_name,
+             max_predictions, bigg, rhea, aerobic):
         """
         Create a design job.
 
@@ -44,26 +44,30 @@ class PredictionJobsResource(MethodResource):
         :param project_id: Can be ``None`` in which case the job is public.
         :param product_name:
         :param max_predictions:
-        :param token: Value extracted from the request 'Authorization' header.
+        :param bigg: bool
+        :param rhea: bool
+        :param aerobic: bool
         :return:
+        random comment
         """
-        # Verify the request by loading the model from the model-storage
-        # service.
-        model = self.retrieve_model_json(model_id, {
-            "Authorization": g.jwt_token,
-        })
         # Verify that the user may actually start a job for the given project
         # identifier.
         jwt_require_claim(project_id, "write")
-
+        # Verify the request by loading the model from the model-storage
+        # service.
+        headers = {
+            "Authorization": g.jwt_token,
+        }
+        model = self.retrieve_model_json(model_id, headers)
         # Job accepted. Before submitting the job, create a corresponding empty
-        # db entry.
-        job = DesignJob(project_id=project_id, model_id=model_id,
-                        status='PENDING')
+        # database entry.
+        job = DesignJob(project_id=project_id, organism_id=organism_id,
+                        model_id=model_id, status='PENDING')
         db.session.add(job)
         db.session.commit()
-        result = predict.delay(job.id, model, product_name, max_predictions,
-                               aerobic)
+        # Submit a prediction to the celery queue.
+        result = predict.delay(model, product_name, max_predictions,
+                               aerobic, (bigg, rhea), job.id)
         return {
             'id': job.id,
             'state': result.state,
@@ -86,7 +90,7 @@ class PredictionJobsResource(MethodResource):
         # In case any unexpected errors occurred this will trigger an
         # internal server error.
         response.raise_for_status()
-        return response.json()['model_serialized']
+        return response.json()
 
     def get(self):
         # Return a list of jobs that the user can see.
@@ -96,6 +100,7 @@ class PredictionJobsResource(MethodResource):
 class PredictionJobResource(MethodResource):
 
     def get(self, job_id):
+        job_id = int(job_id)
         try:
             job = DesignJob.query.filter(
                 DesignJob.id == job_id,
@@ -114,13 +119,19 @@ class PredictionJobResource(MethodResource):
                 'id': job.id,
                 'task_id': job.task_id,
                 'status': job.status,
+                'model_id': job.model_id,
+                'organism_id': job.organism_id,
                 'result': job.result,
             }, status
 
 
 class ProductsResource(MethodResource):
     def get(self):
-        return products()
+        database = UNIVERSAL_SOURCES[(True, True)]
+        return [
+            {'name': m.name}
+            for m in database.metabolites
+        ]
 
 
 def init_app(app):

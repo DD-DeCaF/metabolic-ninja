@@ -21,5 +21,8 @@ import pytest
 def celery_config():
     return {
         'broker_url': 'redis://redis:6379/0',
-        'result_backend': 'redis://redis:6379/1'
+        'result_backend': 'redis://redis:6379/1',
+        'task_serializer': 'pickle',
+        'result_serializer': 'pickle',
+        'accept_content': ['pickle']
     }

@@ -24,4 +24,13 @@ celery_app = Celery(
     backend=f'redis://{os.environ["REDIS_HOST"]}/1',
 )
 
-celery_app.conf.update(result_expires=None)
+celery_app.conf.update(
+    task_track_started=True,
+    # Time after which a running job will be interrupted.
+    task_time_limit=7200,  # 2 hours
+    # Time after which a successful result will be removed.
+    result_expires=604800,  # 7 days
+    task_serializer='pickle',
+    result_serializer='pickle',
+    accept_content=['pickle']
+)

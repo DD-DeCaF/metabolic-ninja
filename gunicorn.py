@@ -39,10 +39,11 @@ access_log_format = '''%(t)s "%(r)s" %(s)s %(b)s %(L)s "%(f)s"'''
 
 
 if _config == "production":
-    workers = os.cpu_count() * 2 + 1
+    workers = 2
     preload_app = True
 else:
     # FIXME: The number of workers is up for debate. At least for testing more
     # than one worker could make sense.
+    preload_app = True
     workers = 1
-    reload = True
+    reload = False

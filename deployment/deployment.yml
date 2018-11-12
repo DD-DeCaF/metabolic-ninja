@@ -22,7 +22,7 @@ spec:
         - containerPort: 8000
         env:
         - name: ENVIRONMENT
-          value: staging
+          value: production
         - name: SCRIPT_NAME
           value: /pathways-caffeine
         - name: FLASK_APP
@@ -61,18 +61,21 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-caffeine
               key: POSTGRES_PASS
-        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
+        command: ["/bin/sh", "-c"]
+        args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
         resources:
           requests:
-            cpu: "100m"
-          limits:
             cpu: "200m"
+          limits:
+            cpu: "2000m"
       - name: worker
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
         env:
         - name: REDIS_HOST
           value: localhost:6379
+        - name: C_FORCE_ROOT
+          value: "1"
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:

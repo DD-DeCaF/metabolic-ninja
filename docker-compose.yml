@@ -49,6 +49,7 @@ services:
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
     - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
     - POSTGRES_PASS=${POSTGRES_PASS}
+    - C_FORCE_ROOT=1
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
   flower:
@@ -68,7 +69,7 @@ services:
   redis:
     image: redis
     ports:
-    - "6379"
+    - "${REDIS_PORT:-6379}:6379"
     networks:
     - default
     command: redis-server --appendonly yes
