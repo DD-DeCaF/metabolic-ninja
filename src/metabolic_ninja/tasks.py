@@ -18,6 +18,7 @@ import os
 from contextlib import contextmanager
 from itertools import chain as iter_chain
 
+import cameo.core.target as targets
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
@@ -215,8 +216,12 @@ def evaluate_prediction(designs, pathway, model, method):
                 bpc_yield = None
                 target_flux = None
                 biomass = None
+            knockouts = set(r for r in design_result.targets
+                            if isinstance(r, targets.ReactionKnockoutTarget))
+            manipulations = set(design_result.targets).difference(knockouts)
             results.append({
-                "manipulations": design_result,
+                "knockouts": list(knockouts),
+                "manipulations": list(manipulations),
                 "heterologous_reactions": pathway.reactions,
                 "synthetic_reactions": pathway.exchanges,
                 "fitness": bpc_yield,
@@ -228,6 +233,23 @@ def evaluate_prediction(designs, pathway, model, method):
     return results
 
 
+def manipulation_helper(target):
+    """Convert a FluxModulationTarget to a dictionary."""
+    result = {
+        "id": target.id,
+        "value": target.fold_change
+    }
+    if target.fold_change > 0.0:
+        result["direction"] = "up"
+    elif target.fold_change < 0.0:
+        result["direction"] = "down"
+    else:
+        raise ValueError(
+            f"Expected a non-zero fold-change for a flux modulation target "
+            f"({target.id}).")
+    return result
+
+
 @celery_app.task()
 def concatenate(results):
     reactions = {}
@@ -237,8 +259,9 @@ def concatenate(results):
         reactions.update(**{
             r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
         })
+        row["knockouts"] = [t.id for t in row["knockouts"]]
         row["manipulations"] = [
-            t._repr_html_() for t in row["manipulations"].targets]
+            manipulation_helper(t) for t in row["manipulations"]]
         row["heterologous_reactions"] = [
             r.id for r in row["heterologous_reactions"]]
         row["synthetic_reactions"] = [
