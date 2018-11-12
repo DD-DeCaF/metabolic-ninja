@@ -26,6 +26,7 @@ def init_app(app):
     def healthz():
         """
         Run readiness checks.
+
         Failed checks are allowed to raise uncaught exceptions to be logged.
         """
         checks = []

@@ -60,9 +60,7 @@ def init_app(application, database):
     # Add CORS information for all resources.
     CORS(application)
 
-
     # Add readiness check endpoint
-    ############################################################################
     from . import healthz
     healthz.init_app(application)
 
