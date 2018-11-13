@@ -13,7 +13,7 @@
 # limitations under the License.from datetime import datetime
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects import postgresql
@@ -22,10 +22,16 @@ from sqlalchemy.dialects import postgresql
 db = SQLAlchemy()
 
 
+def tz_aware_now():
+    return datetime.now(timezone.utc)
+
+
 class TimestampMixin:
 
-    created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    created = db.Column(db.DateTime(timezone=True), nullable=False,
+                        default=tz_aware_now)
+    updated = db.Column(db.DateTime(timezone=True), nullable=True,
+                        onupdate=tz_aware_now)
 
 
 class DesignJob(TimestampMixin, db.Model):
@@ -35,7 +41,7 @@ class DesignJob(TimestampMixin, db.Model):
     organism_id = db.Column(db.Integer, nullable=False)
     model_id = db.Column(db.Integer, nullable=False)
     # The UUID assigned by celery.
-    task_id = db.Column(db.String(36), unique=True)
+    task_id = db.Column(db.String(36), nullable=True)
     # The status refers to
     # http://docs.celeryproject.org/en/latest/reference/celery.states.html#misc.
     status = db.Column(db.String(8), nullable=False)
@@ -43,7 +49,7 @@ class DesignJob(TimestampMixin, db.Model):
 
     def __repr__(self):
         """Return a printable representation."""
-        return f"<{self.__class__.__name__} {self.id}: {self.name}>"
+        return f"<{self.__class__.__name__} {self.id}>"
 
     def is_complete(self):
         return self.status in ('SUCCESS', 'FAILURE', 'REVOKED')

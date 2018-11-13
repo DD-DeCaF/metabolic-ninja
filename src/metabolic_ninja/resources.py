@@ -17,7 +17,7 @@
 
 import requests
 from flask import g
-from flask_apispec import MethodResource, use_kwargs
+from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
@@ -25,7 +25,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
-from .schemas import PredictionJobRequestSchema
+from .schemas import PredictionJobRequestSchema, PredictionJobSchema
 from .tasks import predict
 from .universal import UNIVERSAL_SOURCES
 
@@ -92,13 +92,18 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         return response.json()
 
+    @marshal_with(PredictionJobSchema(many=True, exclude=("result",)))
     def get(self):
         # Return a list of jobs that the user can see.
-        pass
+        return DesignJob.query.filter(
+            DesignJob.project_id.in_(g.jwt_claims['prj']) |
+            DesignJob.project_id.is_(None)
+        ).all()
 
 
 class PredictionJobResource(MethodResource):
 
+    @marshal_with(PredictionJobSchema())
     def get(self, job_id):
         job_id = int(job_id)
         try:
@@ -109,20 +114,15 @@ class PredictionJobResource(MethodResource):
                 DesignJob.project_id.is_(None)
             ).one()
         except NoResultFound:
-            return {'error': f"Cannot find any model with id {job_id}"}, 404
+            return {
+                'error': f"Cannot find any design job with id {job_id}."
+            }, 404
         else:
             if job.is_complete():
                 status = 200
             else:
                 status = 202
-            return {
-                'id': job.id,
-                'task_id': job.task_id,
-                'status': job.status,
-                'model_id': job.model_id,
-                'organism_id': job.organism_id,
-                'result': job.result,
-            }, status
+            return job, status
 
 
 class ProductsResource(MethodResource):
