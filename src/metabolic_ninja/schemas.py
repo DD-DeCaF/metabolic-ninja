@@ -36,3 +36,20 @@ class PredictionJobRequestSchema(StrictSchema):
     bigg = fields.Boolean(required=True)
     rhea = fields.Boolean(required=True)
     aerobic = fields.Boolean(required=True)
+
+
+class PredictionJobSchema(StrictSchema):
+
+    class Meta:
+        dateformat = "iso"
+
+    id = fields.Integer(required=True)
+    project_id = fields.Integer(required=True, allow_none=True)
+    organism_id = fields.Integer(required=True)
+    model_id = fields.Integer(required=True)
+    # The status refers to
+    # http://docs.celeryproject.org/en/latest/reference/celery.states.html#misc.
+    status = fields.String(required=True)
+    created = fields.DateTime(required=True)
+    updated = fields.DateTime(required=True)
+    result = fields.Dict(required=True, allow_none=True)
