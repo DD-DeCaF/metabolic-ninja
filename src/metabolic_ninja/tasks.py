@@ -18,6 +18,7 @@ import os
 from contextlib import contextmanager
 from itertools import chain as iter_chain
 
+import cameo.core.target as targets
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
@@ -96,11 +97,20 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     source = UNIVERSAL_SOURCES[databases]
     # Configure the model object for cameo.
     model = model_from_dict(model_obj["model_serialized"])
+    # FIXME: We should allow users to specify a medium that they previously
+    # uploaded.
     model.solver = "cplex"
+    # FIXME: This uses BiGG notation to change the lower bound of the
+    # exchange reaction. Should instead find this using a combination of
+    # metabolites in the `model.exchanges`, MetaNetX identifiers and/or
+    # metabolite formulae. Then set this on the `model.medium` to be sure
+    # about exchange direction.
     if not aerobic and "EX_o2_e" in model.reactions:
         model.reactions.EX_o2_e.lower_bound = 0
     model.biomass = model_obj["default_biomass_reaction"]
-    # We have to identify a carbon source from the medium.
+    # FIXME: We can try to be smart, as in theoretical yield app, but ideally
+    # the carbon source is user defined just like default_biomass_reaction.
+    # Maybe we need a new field for the medium database model?
     model.carbon_source = "EX_glc__D_e"
     # Define the workflow.
     workflow = (
@@ -206,8 +216,12 @@ def evaluate_prediction(designs, pathway, model, method):
                 bpc_yield = None
                 target_flux = None
                 biomass = None
+            knockouts = set(r for r in design_result.targets
+                            if isinstance(r, targets.ReactionKnockoutTarget))
+            manipulations = set(design_result.targets).difference(knockouts)
             results.append({
-                "manipulations": design_result,
+                "knockouts": list(knockouts),
+                "manipulations": list(manipulations),
                 "heterologous_reactions": pathway.reactions,
                 "synthetic_reactions": pathway.exchanges,
                 "fitness": bpc_yield,
@@ -219,6 +233,23 @@ def evaluate_prediction(designs, pathway, model, method):
     return results
 
 
+def manipulation_helper(target):
+    """Convert a FluxModulationTarget to a dictionary."""
+    result = {
+        "id": target.id,
+        "value": target.fold_change
+    }
+    if target.fold_change > 0.0:
+        result["direction"] = "up"
+    elif target.fold_change < 0.0:
+        result["direction"] = "down"
+    else:
+        raise ValueError(
+            f"Expected a non-zero fold-change for a flux modulation target "
+            f"({target.id}).")
+    return result
+
+
 @celery_app.task()
 def concatenate(results):
     reactions = {}
@@ -228,8 +259,9 @@ def concatenate(results):
         reactions.update(**{
             r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
         })
+        row["knockouts"] = [t.id for t in row["knockouts"]]
         row["manipulations"] = [
-            t._repr_html_() for t in row["manipulations"].targets]
+            manipulation_helper(t) for t in row["manipulations"]]
         row["heterologous_reactions"] = [
             r.id for r in row["heterologous_reactions"]]
         row["synthetic_reactions"] = [
