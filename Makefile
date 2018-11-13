@@ -84,6 +84,7 @@ databases:
 	./scripts/wait_for_postgres.sh
 	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja;"
 	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja_testing;"
+	docker-compose run --rm web flask db upgrade
 	docker-compose stop
 
 #################################################################################
