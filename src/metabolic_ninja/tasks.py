@@ -31,12 +31,13 @@ from celery import group
 from celery.utils.log import get_task_logger
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
-from cobra.io.dict import reaction_to_dict
+from cobra.io.dict import reaction_to_dict, metabolite_to_dict
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .celery import celery_app
+from .helpers import identify_exotic_cofactors
 from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
 
@@ -149,12 +150,18 @@ def find_pathways(product, model, max_predictions, source):
 def optimize(self, pathways, model):
     return self.replace(group(
         group(
-            (differential_fva_optimization.si(p, model) |
-             evaluate_diff_fva.s(p, model,
-                                 "PathwayPredictor+DifferentialFVA")),
-            (cofactor_swap_optimization.si(p, model) |
-             evaluate_cofactor_swap.s(p, model,
-                                      "PathwayPredictor+CofactorSwap"))
+            (
+                differential_fva_optimization.si(p, model) |
+                evaluate_diff_fva.s(p, model,
+                                    "PathwayPredictor+DifferentialFVA") |
+                evaluate_exotic_cofactors.s(p, model)
+            ),
+            (
+                cofactor_swap_optimization.si(p, model) |
+                evaluate_cofactor_swap.s(p, model,
+                                         "PathwayPredictor+CofactorSwap") |
+                evaluate_exotic_cofactors.s(p, model)
+            )
         ) for p in pathways)
     )
 
@@ -190,33 +197,34 @@ def evaluate_diff_fva(designs, pathway, model, method):
     with model:
         pathway.apply(model)
         for design_result in designs:
-            design_result.apply(model)
-            try:
-                model.objective = model.biomass
-                solution = model.optimize()
-                p_yield = pyield(model, solution, pathway.product)
-                bpc_yield = bpcy(model, solution, pathway.product)
-                target_flux = solution[pathway.product.id]
-                biomass = solution[model.biomass]
-            except (OptimizationError, ZeroDivisionError):
-                p_yield = None
-                bpc_yield = None
-                target_flux = None
-                biomass = None
-            knockouts = set(r for r in design_result.targets
-                            if isinstance(r, targets.ReactionKnockoutTarget))
-            manipulations = set(design_result.targets).difference(knockouts)
-            results.append({
-                "knockouts": list(knockouts),
-                "manipulations": list(manipulations),
-                "heterologous_reactions": pathway.reactions,
-                "synthetic_reactions": pathway.exchanges,
-                "fitness": bpc_yield,
-                "yield": p_yield,
-                "product": target_flux,
-                "biomass": biomass,
-                "method": method
-            })
+            with model:
+                design_result.apply(model)
+                try:
+                    model.objective = model.biomass
+                    solution = model.optimize()
+                    p_yield = pyield(model, solution, pathway.product)
+                    bpc_yield = bpcy(model, solution, pathway.product)
+                    target_flux = solution[pathway.product.id]
+                    biomass = solution[model.biomass]
+                except (OptimizationError, ZeroDivisionError):
+                    p_yield = None
+                    bpc_yield = None
+                    target_flux = None
+                    biomass = None
+                knockouts = set(r for r in design_result.targets
+                                if isinstance(r, targets.ReactionKnockoutTarget))
+                manipulations = set(design_result.targets).difference(knockouts)
+                results.append({
+                    "knockouts": list(knockouts),
+                    "manipulations": list(manipulations),
+                    "heterologous_reactions": pathway.reactions,
+                    "synthetic_reactions": pathway.exchanges,
+                    "fitness": bpc_yield,
+                    "yield": p_yield,
+                    "product": target_flux,
+                    "biomass": biomass,
+                    "method": method
+                })
     return results
 
 
@@ -291,13 +299,53 @@ def heuristic_optimization(pathway, model):
 
 
 @celery_app.task()
+def evaluate_exotic_cofactors(results, pathway, model):
+    """
+    Add non-native co-factors of a heterologous pathway to the results.
+
+    This task should be chained after the evaluation of an optimization
+    prediction.
+
+    Parameters
+    ----------
+    results : list
+        List of dicts coming from an optimization evaluation task.
+    pathway : cameo.strain_design.pathway_prediction.pathway_predictor.PathwayResult
+        One of the predicted heterologous pathways predicted by cameo.
+    model : cobra.Model
+        The model of interest.
+
+    Returns
+    -------
+    list
+        The same list of results where each result has an added element
+        ``'exotic_cofactors'``.
+
+    """
+    with model:
+        pathway.apply(model)
+        model.objective = pathway.product
+        model.objective_direction = "max"
+        solution = model.optimize()
+        # TODO: Get the tolerance from the solver and use it as the threshold.
+        cofactors = identify_exotic_cofactors(pathway, solution)
+    for row in results:
+        row["exotic_cofactors"] = cofactors
+    return results
+
+
+@celery_app.task()
 def concatenate(results):
     reactions = {}
+    metabolites = {}
     final = []
     # Flatten lists and convert design and pathway to dictionary.
     for row in iter_chain.from_iterable(results):
         reactions.update(**{
             r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
+        })
+        metabolites.update(**{
+            m.id: metabolite_to_dict(m) for m in row["exotic_cofactors"]
         })
         row["knockouts"] = [t.id for t in row["knockouts"]]
         row["manipulations"] = [
@@ -306,10 +354,13 @@ def concatenate(results):
             r.id for r in row["heterologous_reactions"]]
         row["synthetic_reactions"] = [
             r.id for r in row["synthetic_reactions"]]
+        row["exotic_cofactors"] = [
+            m.id for m in row["exotic_cofactors"]]
         final.append(row)
     return {
         "table": final,
-        "reactions": reactions
+        "reactions": reactions,
+        "metabolites": metabolites
     }
 
 
