@@ -24,6 +24,8 @@ from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
 from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield, product_yield)
+from cameo.strain_design.heuristic.evolutionary_based import (
+    CofactorSwapOptimization)
 from cameo.strain_design.pathway_prediction import PathwayPredictor
 from celery import group
 from celery.utils.log import get_task_logger
@@ -146,11 +148,14 @@ def find_pathways(product, model, max_predictions, source):
 @celery_app.task(bind=True)
 def optimize(self, pathways, model):
     return self.replace(group(
-        (
-            differential_fva_optimization.si(p, model) |
-            evaluate_prediction.s(p, model, "PathwayPredictor+DifferentialFVA")
-        )
-        for p in pathways)
+        group(
+            (differential_fva_optimization.si(p, model) |
+             evaluate_diff_fva.s(p, model,
+                                 "PathwayPredictor+DifferentialFVA")),
+            (cofactor_swap_optimization.si(p, model) |
+             evaluate_cofactor_swap.s(p, model,
+                                      "PathwayPredictor+CofactorSwap"))
+        ) for p in pathways)
     )
 
 
@@ -174,35 +179,17 @@ def differential_fva_optimization(pathway, model):
 
 
 @celery_app.task()
-def heuristic_optimization(pathway, model):
-    with model:
-        pathway.apply(model)
-        predictor = OptGene(
-            model=model,
-            plot=False
-        )
-        designs = predictor.run(
-            target=pathway.product.id,
-            biomass=model.biomass,
-            substrate=model.carbon_source,
-            max_evaluations=1500,
-            max_knockouts=15,
-            max_time=120
-        )
-    return designs
-
-
-@celery_app.task()
-def evaluate_prediction(designs, pathway, model, method):
+def evaluate_diff_fva(designs, pathway, model, method):
     if designs is None:
         return []
+    logger.info(f"Evaluating {len(designs)} differential FVA surface points.")
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
         model.biomass, pathway.product, model.carbon_source)
     results = []
     with model:
         pathway.apply(model)
-        for design_result in designs._designs:
+        for design_result in designs:
             design_result.apply(model)
             try:
                 model.objective = model.biomass
@@ -248,6 +235,59 @@ def manipulation_helper(target):
             f"Expected a non-zero fold-change for a flux modulation target "
             f"({target.id}).")
     return result
+
+
+@celery_app.task()
+def cofactor_swap_optimization(pathway, model):
+    pyield = product_yield(pathway.product, model.carbon_source)
+    with model:
+        pathway.apply(model)
+        # TODO: By default swaps NADH with NADPH using BiGG notation.
+        predictor = CofactorSwapOptimization(
+            model=model,
+            objective_function=pyield
+        )
+        designs = predictor.run(max_size=15)
+    return designs
+
+
+@celery_app.task()
+def evaluate_cofactor_swap(designs, pathway, model, method):
+    if designs is None:
+        return []
+    logger.info(f"Evaluating {len(designs)} co-factor swap designs.")
+    results = []
+    for row in designs.data_frame.itertuples(index=False):
+        results.append({
+            "manipulations": row.targets,
+            "heterologous_reactions": pathway.reactions,
+            "synthetic_reactions": pathway.exchanges,
+            "fitness": None,
+            "yield": row.fitness,
+            "product": None,
+            "biomass": None,
+            "method": method
+        })
+    return results
+
+
+@celery_app.task()
+def heuristic_optimization(pathway, model):
+    with model:
+        pathway.apply(model)
+        predictor = OptGene(
+            model=model,
+            plot=False
+        )
+        designs = predictor.run(
+            target=pathway.product.id,
+            biomass=model.biomass,
+            substrate=model.carbon_source,
+            max_evaluations=1500,
+            max_knockouts=15,
+            max_time=120
+        )
+    return designs
 
 
 @celery_app.task()
