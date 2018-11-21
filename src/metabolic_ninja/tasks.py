@@ -182,13 +182,14 @@ def differential_fva_optimization(pathway, model):
 def evaluate_diff_fva(designs, pathway, model, method):
     if designs is None:
         return []
+    logger.info(f"Evaluating {len(designs)} differential FVA surface points.")
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
         model.biomass, pathway.product, model.carbon_source)
     results = []
     with model:
         pathway.apply(model)
-        for design_result in designs._designs:
+        for design_result in designs:
             design_result.apply(model)
             try:
                 model.objective = model.biomass
@@ -254,6 +255,7 @@ def cofactor_swap_optimization(pathway, model):
 def evaluate_cofactor_swap(designs, pathway, model, method):
     if designs is None:
         return []
+    logger.info(f"Evaluating {len(designs)} co-factor swap designs.")
     results = []
     for row in designs.data_frame.itertuples(index=False):
         results.append({
