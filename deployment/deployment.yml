@@ -70,7 +70,7 @@ spec:
           initialDelaySeconds: 5
         resources:
           requests:
-            cpu: "200m"
+            cpu: "100m"
           limits:
             cpu: "2000m"
       - name: worker
@@ -105,7 +105,7 @@ spec:
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
-            cpu: "2000m"
+            cpu: "1000m"
           limits:
             cpu: "6000m"
       - name: redis
@@ -117,7 +117,7 @@ spec:
           requests:
             cpu: "100m"
           limits:
-            cpu: "200m"
+            cpu: "2000m"
         volumeMounts:
           - mountPath: "/data"
             name: metabolic-ninja-caffeine
@@ -132,9 +132,9 @@ spec:
         command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja"]
         resources:
           requests:
-            cpu: "50m"
-          limits:
             cpu: "100m"
+          limits:
+            cpu: "2000m"
       - name: cloudsql-proxy
         image: gcr.io/cloudsql-docker/gce-proxy:1.11
         command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
@@ -142,7 +142,7 @@ spec:
           requests:
             cpu: "100m"
           limits:
-            cpu: "200m"
+            cpu: "2000m"
         volumeMounts:
           - name: cloudsql-instance-credentials
             mountPath: /secrets/cloudsql
