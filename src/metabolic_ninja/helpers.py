@@ -98,9 +98,13 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
     list
         All the candidate exotic (non-native) co-factors.
 
+    Warnings
+    --------
+    The current design is only meant for linear pathways. It will likely be
+    incorrect for branching ones.
+
     """
     # Adapters are single compound reactions: native <=> heterologous.
-    native_sources = frozenset([r.reactants[0] for r in pathway.adapters])
     adapted_sources = frozenset([r.products[0] for r in pathway.adapters])
     heterologous_reactions = frozenset(pathway.reactions)
     # The pathway `product` is a demand reaction.
@@ -112,43 +116,23 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
     # not adapters nor exchanges.
     rxn_queue = list(target.reactions & heterologous_reactions)
     seen = set()
-    exotic_cofactors = []
+    exotic_cofactors = set()
     while len(rxn_queue) > 0:
         rxn = rxn_queue.pop()
         seen.add(rxn)
         flux = 0.0 if abs(solution[rxn.id]) <= threshold else solution[rxn.id]
         if flux > 0:
-            # Remove candidate precursors that are native compounds anyway.
-            substrates = set(rxn.reactants) - adapted_sources
-            # Add non-native reaction products other than the target.
-            products = set(rxn.products) - adapted_sources
-            try:
-                products.remove(target)
-            except KeyError:
-                # Target is a native compound.
-                pass
-            finally:
-                exotic_cofactors.extend(products)
+            substrates = set(rxn.reactants)
+            products = set(rxn.products)
         elif flux < 0:
-            # Remove candidate precursors that are native compounds anyway.
-            substrates = set(rxn.products) - adapted_sources
-            # Add non-native reaction products other than the target.
-            products = set(rxn.reactants) - adapted_sources
-            try:
-                products.remove(target)
-            except KeyError:
-                # Target is a native compound.
-                pass
-            finally:
-                exotic_cofactors.extend(products)
+            substrates = set(rxn.products)
+            products = set(rxn.reactants)
         else:
             logger.warning("No flux through heterologous reaction %r!",
                            rxn.id)
             continue
-        # If there are no candidate precursors left, we evaluate remaining
-        # reactions.
-        if len(substrates) == 0:
-            continue
+        products.remove(target)
+        exotic_cofactors.update(products - adapted_sources)
         # With one precursor, there is no doubt that it is not a co-factor.
         if len(substrates) == 1:
             target = substrates.pop()
@@ -171,8 +155,10 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
         target, scl = options.pop()
         logger.info(f"Picking %r (%r) with SCL = %.3G.", target.id,
                     target.name, scl)
-        # All other precursors should be non-native co-factors.
-        exotic_cofactors.extend(o[0] for o in options)
+        # All other precursors are potentially non-native co-factors.
+        exotic_cofactors.update(
+            set(o[0] for o in options) - adapted_sources
+        )
         # Add new reactions to exploration queue.
         rxn_queue.extend((target.reactions & heterologous_reactions) - seen)
     return exotic_cofactors
