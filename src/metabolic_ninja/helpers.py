@@ -79,7 +79,7 @@ def compute_chemical_linkage_strength(counts_a, counts_d):
     return scl / max(a_total, d_total)
 
 
-def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
+def identify_exotic_cofactors(pathway, model, threshold=1E-07):
     """
     Take a heterologous pathway and identify all non-native co-factors.
 
@@ -87,8 +87,8 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
     ----------
     pathway : cameo.strain_design.pathway_prediction.pathway_predictor.PathwayResult
         One of the predicted heterologous pathways predicted by cameo.
-    solution : cobra.Solution
-        A flux solution when the objective is maximizing the pathway product.
+    model : cobra.Model
+        The model to which the pathway should be added.
     threshold : float, optional
         The threshold for regarding fluxes as zero. Should be set to the
         solver tolerance.
@@ -98,12 +98,24 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
     list
         All the candidate exotic (non-native) co-factors.
 
+    Raises
+    ------
+    OptimizationError
+        If producing the heterologous product with the given model is
+        infeasible.
+
     Warnings
     --------
     The current design is only meant for linear pathways. It will likely be
     incorrect for branching ones.
 
     """
+    # Find the direction of flux through the pathway to the product.
+    with model:
+        pathway.apply(model)
+        model.objective = model.reactions.get_by_id(pathway.product.id)
+        model.objective_direction = "max"
+        solution = model.optimize()
     # Adapters are single compound reactions: native <=> heterologous.
     adapted_sources = frozenset([r.products[0] for r in pathway.adapters])
     heterologous_reactions = frozenset(pathway.reactions)
@@ -145,15 +157,17 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
             # Generate the atom counts from the formulae.
             count = atom_counts.setdefault(compound,
                                            count_atoms(compound.formula))
-            target_count = atom_counts.setdefault(compound,
+            target_count = atom_counts.setdefault(target,
                                                   count_atoms(target.formula))
             scl = compute_chemical_linkage_strength(
                 count, target_count)
             options.append((compound, scl))
         # The maximum SCL is our candidate precursor.
         options.sort(key=itemgetter(1))
+        logger.debug("Target: %r", target.id)
+        logger.debug("Precursor options: %r", options)
         target, scl = options.pop()
-        logger.info(f"Picking %r (%r) with SCL = %.3G.", target.id,
+        logger.info("Picking %r (%r) with SCL = %.3G.", target.id,
                     target.name, scl)
         # All other precursors are potentially non-native co-factors.
         exotic_cofactors.update(
@@ -162,6 +176,3 @@ def identify_exotic_cofactors(pathway, solution, threshold=1E-07):
         # Add new reactions to exploration queue.
         rxn_queue.extend((target.reactions & heterologous_reactions) - seen)
     return exotic_cofactors
-
-
-
