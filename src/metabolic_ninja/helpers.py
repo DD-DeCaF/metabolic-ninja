@@ -109,7 +109,7 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
     The current design is only meant for linear pathways. It will likely be
     incorrect for branching ones.
 
-    """
+    """  # noqa: E501
     # Find the direction of flux through the pathway to the product.
     with model:
         pathway.apply(model)

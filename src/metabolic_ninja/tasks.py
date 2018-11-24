@@ -31,7 +31,7 @@ from celery import group
 from celery.utils.log import get_task_logger
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
-from cobra.io.dict import reaction_to_dict, metabolite_to_dict
+from cobra.io.dict import metabolite_to_dict, reaction_to_dict
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -211,8 +211,8 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     bpc_yield = None
                     target_flux = None
                     biomass = None
-                knockouts = set(r for r in design_result.targets
-                                if isinstance(r, targets.ReactionKnockoutTarget))
+                knockouts = {r for r in design_result.targets
+                             if isinstance(r, targets.ReactionKnockoutTarget)}
                 manipulations = set(design_result.targets).difference(knockouts)
                 results.append({
                     "knockouts": list(knockouts),
@@ -321,7 +321,7 @@ def evaluate_exotic_cofactors(results, pathway, model):
         The same list of results where each result has an added element
         ``'exotic_cofactors'``.
 
-    """
+    """  # noqa: E501
     with model:
         pathway.apply(model)
         model.objective = pathway.product
