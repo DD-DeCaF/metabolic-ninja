@@ -322,13 +322,8 @@ def evaluate_exotic_cofactors(results, pathway, model):
         ``'exotic_cofactors'``.
 
     """  # noqa: E501
-    with model:
-        pathway.apply(model)
-        model.objective = pathway.product
-        model.objective_direction = "max"
-        solution = model.optimize()
-        # TODO: Get the tolerance from the solver and use it as the threshold.
-        cofactors = identify_exotic_cofactors(pathway, solution)
+    # TODO: Get the tolerance from the solver and use it as the threshold.
+    cofactors = identify_exotic_cofactors(pathway, model)
     for row in results:
         row["exotic_cofactors"] = cofactors
     return results
