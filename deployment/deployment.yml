@@ -129,7 +129,17 @@ spec:
         env:
         - name: REDIS_HOST
           value: localhost:6379
-        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja"]
+        - name: FLOWER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: FLOWER_USERNAME
+        - name: FLOWER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-caffeine
+              key: FLOWER_PASSWORD
+        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
         resources:
           requests:
             cpu: "100m"
