@@ -140,8 +140,7 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
             substrates = set(rxn.products)
             products = set(rxn.reactants)
         else:
-            logger.warning("No flux through heterologous reaction %r!",
-                           rxn.id)
+            logger.warning(f"No flux through heterologous reaction {rxn.id}!")
             continue
         products.remove(target)
         exotic_cofactors.update(products - adapted_sources)
@@ -164,11 +163,11 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
             options.append((compound, scl))
         # The maximum SCL is our candidate precursor.
         options.sort(key=itemgetter(1))
-        logger.debug("Target: %r", target.id)
-        logger.debug("Precursor options: %r", options)
+        logger.debug(f"Target: {target.id}")
+        logger.debug(f"Precursor options: {options}")
         target, scl = options.pop()
-        logger.info("Picking %r (%r) with SCL = %.3G.", target.id,
-                    target.name, scl)
+        logger.info(f"Picking {target.id} ({target.name}) with "
+                    f"SCL = {scl:.3G}.")
         # All other substrates are potentially non-native co-factors.
         exotic_cofactors.update(
             set(o[0] for o in options) - adapted_sources
