@@ -51,9 +51,9 @@ def compute_chemical_linkage_strength(counts_a, counts_d):
     Returns
     -------
     float
-        Return the strength of chemical linkage between compound A and B which
+        Return the strength of chemical linkage between compound A and D which
         is the 'intersection' between their atom counts, normalized by the
-        greater of the total atom counts of either A or B.
+        greater of the total atom counts of either A or D.
 
     References
     ----------
@@ -145,12 +145,12 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
             continue
         products.remove(target)
         exotic_cofactors.update(products - adapted_sources)
-        # With one precursor, there is no doubt that it is not a co-factor.
+        # With one substrate, there is no doubt that it is not a co-factor.
         if len(substrates) == 1:
             target = substrates.pop()
             rxn_queue.extend((target.reactions & heterologous_reactions) - seen)
             continue
-        # With multiple precursors, we evaluate the strength of chemical
+        # With multiple substrates, we evaluate the strength of chemical
         # linkage in order to weed out co-factors.
         options = []
         for compound in substrates:
@@ -169,7 +169,7 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
         target, scl = options.pop()
         logger.info("Picking %r (%r) with SCL = %.3G.", target.id,
                     target.name, scl)
-        # All other precursors are potentially non-native co-factors.
+        # All other substrates are potentially non-native co-factors.
         exotic_cofactors.update(
             set(o[0] for o in options) - adapted_sources
         )
