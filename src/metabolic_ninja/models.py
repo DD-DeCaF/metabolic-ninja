@@ -40,6 +40,8 @@ class DesignJob(TimestampMixin, db.Model):
     project_id = db.Column(db.Integer, nullable=True, index=True)
     organism_id = db.Column(db.Integer, nullable=False)
     model_id = db.Column(db.Integer, nullable=False)
+    product_name = db.Column(db.String, nullable=False)
+    max_predictions = db.Column(db.Integer, nullable=False)
     # The UUID assigned by celery.
     task_id = db.Column(db.String(36), nullable=True)
     # The status refers to

@@ -62,7 +62,8 @@ class PredictionJobsResource(MethodResource):
         # Job accepted. Before submitting the job, create a corresponding empty
         # database entry.
         job = DesignJob(project_id=project_id, organism_id=organism_id,
-                        model_id=model_id, status='PENDING')
+                        model_id=model_id, product_name=product_name,
+                        max_predictions=max_predictions, status='PENDING')
         db.session.add(job)
         db.session.commit()
         # Submit a prediction to the celery queue.
