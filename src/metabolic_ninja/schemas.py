@@ -47,6 +47,8 @@ class PredictionJobSchema(StrictSchema):
     project_id = fields.Integer(required=True, allow_none=True)
     organism_id = fields.Integer(required=True)
     model_id = fields.Integer(required=True)
+    product_name = fields.String(required=True)
+    max_predictions = fields.Integer(required=True)
     # The status refers to
     # http://docs.celeryproject.org/en/latest/reference/celery.states.html#misc.
     status = fields.String(required=True)
