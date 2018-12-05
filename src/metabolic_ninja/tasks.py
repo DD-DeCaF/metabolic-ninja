@@ -100,20 +100,22 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     source = UNIVERSAL_SOURCES[databases]
     # Configure the model object for cameo.
     model = model_from_dict(model_obj["model_serialized"])
-    # FIXME: We should allow users to specify a medium that they previously
+    # FIXME (Moritz Beber): We should allow users to specify a medium that they
+    #  previously
     # uploaded.
     model.solver = "cplex"
-    # FIXME: This uses BiGG notation to change the lower bound of the
-    # exchange reaction. Should instead find this using a combination of
-    # metabolites in the `model.exchanges`, MetaNetX identifiers and/or
-    # metabolite formulae. Then set this on the `model.medium` to be sure
-    # about exchange direction.
+    # FIXME (Moritz Beber): This uses BiGG notation to change the lower bound
+    #  of the exchange reaction. Should instead find this using a combination of
+    #  metabolites in the `model.exchanges`, MetaNetX identifiers and/or
+    #  metabolite formulae. Then set this on the `model.medium` to be sure
+    #  about exchange direction.
     if not aerobic and "EX_o2_e" in model.reactions:
         model.reactions.EX_o2_e.lower_bound = 0
     model.biomass = model_obj["default_biomass_reaction"]
-    # FIXME: We can try to be smart, as in theoretical yield app, but ideally
-    # the carbon source is user defined just like default_biomass_reaction.
-    # Maybe we need a new field for the medium database model?
+    # FIXME (Moritz Beber): We can try to be smart, as in theoretical yield
+    #  app, but ideally the carbon source is user defined just like
+    #  default_biomass_reaction. Maybe we need a new field for the medium
+    #  database model?
     model.carbon_source = "EX_glc__D_e"
     # Define the workflow.
     workflow = (
@@ -250,7 +252,8 @@ def cofactor_swap_optimization(pathway, model):
     pyield = product_yield(pathway.product, model.carbon_source)
     with model:
         pathway.apply(model)
-        # TODO: By default swaps NADH with NADPH using BiGG notation.
+        # TODO (Moritz Beber): By default swaps NADH with NADPH using BiGG
+        #  notation.
         predictor = CofactorSwapOptimization(
             model=model,
             objective_function=pyield
@@ -322,7 +325,8 @@ def evaluate_exotic_cofactors(results, pathway, model):
         ``'exotic_cofactors'``.
 
     """  # noqa: E501
-    # TODO: Get the tolerance from the solver and use it as the threshold.
+    # TODO (Moritz Beber): Get the tolerance from the solver and use it as the
+    #  threshold.
     cofactors = identify_exotic_cofactors(pathway, model)
     for row in results:
         row["exotic_cofactors"] = cofactors
