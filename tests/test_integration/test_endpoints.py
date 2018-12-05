@@ -31,8 +31,10 @@ def test_docs(client):
 def test_get_predictions(client, session):
     """"""
     # Create some jobs.
-    job_1 = DesignJob(organism_id=1, model_id=2, product_name='vanillin', max_predictions=6, status="PENDING")
-    job_2 = DesignJob(organism_id=3, model_id=4, product_name='vanillin', max_predictions=3, status="PENDING")
+    job_1 = DesignJob(organism_id=1, model_id=2, product_name='vanillin',
+                      max_predictions=6, status="PENDING")
+    job_2 = DesignJob(organism_id=3, model_id=4, product_name='vanillin',
+                      max_predictions=3, status="PENDING")
     session.add(job_1)
     session.add(job_2)
     session.commit()
@@ -62,7 +64,8 @@ def test_get_predictions(client, session):
 def test_get_single_prediction(client, session, status, code):
     """"""
     # Create some jobs.
-    expect = DesignJob(organism_id=1, model_id=2, product_name='vanillin', max_predictions=6, status=status)
+    expect = DesignJob(organism_id=1, model_id=2, product_name='vanillin',
+                       max_predictions=6, status=status)
     session.add(expect)
     session.commit()
     response = client.get(f"/predictions/{expect.id}")
