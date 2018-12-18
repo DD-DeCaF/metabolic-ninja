@@ -218,7 +218,8 @@ def evaluate_diff_fva(designs, pathway, model, method):
                 manipulations = set(design_result.targets).difference(knockouts)
                 results.append({
                     "knockouts": list(knockouts),
-                    "manipulations": list(manipulations),
+                    "manipulations": [
+                        manipulation_helper(t) for t in manipulations],
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": pathway.exchanges,
                     "fitness": bpc_yield,
@@ -270,7 +271,8 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
     results = []
     for row in designs.data_frame.itertuples(index=False):
         results.append({
-            "manipulations": row.targets,
+            "manipulations": [{"id": r, "from": "NADH", "to": "NADPH"}
+                              for r in row.targets],
             "heterologous_reactions": pathway.reactions,
             "synthetic_reactions": pathway.exchanges,
             "fitness": None,
@@ -337,7 +339,8 @@ def evaluate_exotic_cofactors(results, pathway, model):
 def concatenate(results):
     reactions = {}
     metabolites = {}
-    final = []
+    diff_fva = []
+    cofactor_swap = []
     # Flatten lists and convert design and pathway to dictionary.
     for row in iter_chain.from_iterable(results):
         reactions.update(**{
@@ -347,17 +350,21 @@ def concatenate(results):
             m.id: metabolite_to_dict(m) for m in row["exotic_cofactors"]
         })
         row["knockouts"] = [t.id for t in row["knockouts"]]
-        row["manipulations"] = [
-            manipulation_helper(t) for t in row["manipulations"]]
         row["heterologous_reactions"] = [
             r.id for r in row["heterologous_reactions"]]
         row["synthetic_reactions"] = [
             r.id for r in row["synthetic_reactions"]]
         row["exotic_cofactors"] = [
             m.id for m in row["exotic_cofactors"]]
-        final.append(row)
+        if row["method"] == "PathwayPredictor+DifferentialFVA":
+            diff_fva.append(row)
+        elif row["method"] == "PathwayPredictor+CofactorSwap":
+            cofactor_swap.append(row)
+        else:
+            raise ValueError("Unknown design method.")
     return {
-        "table": final,
+        "diff_fva": diff_fva,
+        "cofactor_swap": cofactor_swap,
         "reactions": reactions,
         "metabolites": metabolites
     }
