@@ -1,11 +1,11 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: metabolic-ninja-caffeine
+  name: metabolic-ninja-staging
 spec:
   selector:
     app: metabolic-ninja
-    env: caffeine
+    env: staging
   ports:
   - name: web
     protocol: TCP

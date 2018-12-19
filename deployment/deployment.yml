@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: metabolic-ninja-caffeine
+  name: metabolic-ninja-staging
 spec:
   selector:
     matchLabels:
       app: metabolic-ninja
-      env: caffeine
+      env: staging
   replicas: 1
   template:
     metadata:
       labels:
         app: metabolic-ninja
-        env: caffeine
+        env: staging
     spec:
       containers:
       - name: web
@@ -44,22 +44,22 @@ spec:
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: SECRET_KEY
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: SENTRY_DSN
         - name: POSTGRES_USERNAME
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: POSTGRES_USERNAME
         - name: POSTGRES_PASS
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: POSTGRES_PASS
         command: ["/bin/sh", "-c"]
         args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
@@ -84,7 +84,7 @@ spec:
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: SENTRY_DSN
         - name: POSTGRES_HOST
           value: localhost
@@ -95,12 +95,12 @@ spec:
         - name: POSTGRES_USERNAME
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: POSTGRES_USERNAME
         - name: POSTGRES_PASS
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: POSTGRES_PASS
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
@@ -120,7 +120,7 @@ spec:
             cpu: "2000m"
         volumeMounts:
           - mountPath: "/data"
-            name: metabolic-ninja-caffeine
+            name: metabolic-ninja-staging
       - name: flower
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
@@ -132,12 +132,12 @@ spec:
         - name: FLOWER_USERNAME
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: FLOWER_USERNAME
         - name: FLOWER_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: metabolic-ninja-caffeine
+              name: metabolic-ninja-staging
               key: FLOWER_PASSWORD
         command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
         resources:
@@ -158,9 +158,9 @@ spec:
             mountPath: /secrets/cloudsql
             readOnly: true
       volumes:
-        - name: metabolic-ninja-caffeine
+        - name: metabolic-ninja-staging
           persistentVolumeClaim:
-           claimName: metabolic-ninja-caffeine
+           claimName: metabolic-ninja-staging
         - name: cloudsql-instance-credentials
           secret:
             secretName: cloudsql-instance-credentials

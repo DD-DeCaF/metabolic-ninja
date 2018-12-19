@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: metabolic-ninja-caffeine
+  name: metabolic-ninja-staging
   annotations:
     kubernetes.io/ingress.class: "nginx"
 spec:
@@ -15,7 +15,7 @@ spec:
       paths:
       - path: /pathways-caffeine
         backend:
-          serviceName: metabolic-ninja-caffeine
+          serviceName: metabolic-ninja-staging
           servicePort: 80
 
 ---
@@ -23,7 +23,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: metabolic-ninja-flower
+  name: metabolic-ninja-flower-staging
   annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/rewrite-target: /
@@ -38,5 +38,5 @@ spec:
       paths:
       - path: /metabolic-ninja
         backend:
-          serviceName: metabolic-ninja-caffeine
+          serviceName: metabolic-ninja-staging
           servicePort: 5555

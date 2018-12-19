@@ -1,7 +1,7 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: metabolic-ninja-caffeine
+  name: metabolic-ninja-staging
 spec:
   accessModes:
     - ReadWriteOnce
