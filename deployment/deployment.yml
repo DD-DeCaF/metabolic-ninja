@@ -70,7 +70,7 @@ spec:
           initialDelaySeconds: 5
         resources:
           requests:
-            cpu: "100m"
+            cpu: "10m"
           limits:
             cpu: "2000m"
       - name: worker
@@ -105,9 +105,9 @@ spec:
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
-            cpu: "1000m"
+            cpu: "10m"
           limits:
-            cpu: "6000m"
+            cpu: "4000m"
       - name: redis
         image: redis:latest
         ports:
@@ -115,7 +115,7 @@ spec:
         command: ["redis-server", "--appendonly", "yes"]
         resources:
           requests:
-            cpu: "100m"
+            cpu: "10m"
           limits:
             cpu: "2000m"
         volumeMounts:
@@ -142,7 +142,7 @@ spec:
         command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
         resources:
           requests:
-            cpu: "100m"
+            cpu: "10m"
           limits:
             cpu: "2000m"
       - name: cloudsql-proxy
@@ -150,7 +150,7 @@ spec:
         command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
         resources:
           requests:
-            cpu: "100m"
+            cpu: "10m"
           limits:
             cpu: "2000m"
         volumeMounts:
