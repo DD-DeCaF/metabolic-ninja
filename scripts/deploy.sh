@@ -17,7 +17,7 @@
 set -xeu
 
 if [ "${TRAVIS_BRANCH}" = "devel" ]; then
-  DEPLOYMENT=metabolic-ninja-caffeine
+  DEPLOYMENT=metabolic-ninja-staging
 else
   echo "Skipping deployment for branch ${TRAVIS_BRANCH}"
   exit 0
