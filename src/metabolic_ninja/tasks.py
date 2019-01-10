@@ -145,7 +145,7 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
         optimize.s(model) |
         concatenate.s() |
         persist.s(job_id) |
-        notify.s(job_id, product_name, organism_id, user_name, user_email,
+        notify.si(job_id, product_name, organism_id, user_name, user_email,
                  organism_name)
     ).on_error(fail_workflow.s(job_id))
     return self.replace(workflow)
@@ -405,7 +405,7 @@ def persist(result, job_id):
 
 
 @celery_app.task()
-def notify(result, job_id, product_name, organism_id, user_name, user_email,
+def notify(job_id, product_name, organism_id, user_name, user_email,
            organism_name):
     try:
         sendgrid = SendGridAPIClient()
@@ -429,5 +429,3 @@ def notify(result, job_id, product_name, organism_id, user_name, user_email,
             "Unable to send email notification upon job completion",
             exc_info=error,
         )
-    finally:
-        return result
