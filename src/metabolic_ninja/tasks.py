@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 from contextlib import contextmanager
 from itertools import chain as iter_chain
 
 import cameo.core.target as targets
+import requests
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
@@ -32,6 +32,8 @@ from celery.utils.log import get_task_logger
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Email, Mail, Personalization
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -75,7 +77,7 @@ def fail_workflow(request, exc, traceback, job_id):
 
 @celery_app.task(bind=True)
 def predict(self, model_obj, product_name, max_predictions, aerobic,
-            databases, job_id):
+            databases, job_id, organism_id, token):
     """
     Define and start a design prediction workflow.
 
@@ -86,6 +88,8 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     :param aerobic:
     :param databases:
     :param job_id:
+    :param organism_id:
+    :param token:
     :return:
 
     """
@@ -117,13 +121,31 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     #  default_biomass_reaction. Maybe we need a new field for the medium
     #  database model?
     model.carbon_source = "EX_glc__D_e"
+    # Retrieve user details. This should be retrieved here, to ensure that the
+    # JWT has not expired by the time it is used.
+    response = requests.get(f"{os.environ['IAM_API']}/user", headers={
+        'Authorization': f"Bearer {token}",
+    })
+    response.raise_for_status()
+    user = response.json()
+    user_name = f"{user['first_name']} {user['last_name']}"
+    user_email = user['email']
+    # Retrieve the organism name.
+    response = requests.get(
+        f"{os.environ['WAREHOUSE_API']}/organisms/{organism_id}",
+        headers={'Authorization': f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    organism_name = response.json()['name']
     # Define the workflow.
     workflow = (
         find_product.s(product_name, source) |
         find_pathways.s(model, max_predictions, source) |
         optimize.s(model) |
         concatenate.s() |
-        persist.s(job_id)
+        persist.s(job_id) |
+        notify.s(job_id, product_name, organism_id, user_name, user_email,
+                 organism_name)
     ).on_error(fail_workflow.s(job_id))
     return self.replace(workflow)
 
@@ -379,3 +401,32 @@ def persist(result, job_id):
         session.add(job)
         session.commit()
     return result
+
+
+@celery_app.task()
+def notify(result, job_id, product_name, organism_id, user_name, user_email,
+           organism_name):
+    try:
+        sendgrid = SendGridAPIClient()
+        mail = Mail()
+        mail.from_email = Email("DD-DeCaF <hello@dd-decaf.eu>")
+        mail.template_id = "d-8caebf4f862b4c67932515c45c5404cc"
+        personalization = Personalization()
+        personalization.add_to(Email(user_email))
+        personalization.dynamic_template_data = {
+            'name': user_name,
+            'product': product_name,
+            'organism': organism_name,
+            'results_url': f"https://caffeine.dd-decaf.eu/jobs/{job_id}",
+        }
+        mail.add_personalization(personalization)
+        sendgrid.client.mail.send.post(request_body=mail.get())
+    except Exception as error:
+        # Suppress any problem so it doesn't mark the entire workflow as failed,
+        # but do log a warning for potential follow-up.
+        logger.warning(
+            "Unable to send email notification upon job completion",
+            exc_info=error,
+        )
+    finally:
+        return result

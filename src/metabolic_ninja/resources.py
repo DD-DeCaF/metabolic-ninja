@@ -68,7 +68,8 @@ class PredictionJobsResource(MethodResource):
         db.session.commit()
         # Submit a prediction to the celery queue.
         result = predict.delay(model, product_name, max_predictions,
-                               aerobic, (bigg, rhea), job.id)
+                               aerobic, (bigg, rhea), job.id, organism_id,
+                               g.jwt_token)
         return {
             'id': job.id,
             'state': result.state,
