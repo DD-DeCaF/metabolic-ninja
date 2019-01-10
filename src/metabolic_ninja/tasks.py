@@ -410,7 +410,7 @@ def notify(job_id, product_name, organism_id, user_name, user_email,
     try:
         sendgrid = SendGridAPIClient()
         mail = Mail()
-        mail.from_email = Email("DD-DeCaF <hello@dd-decaf.eu>")
+        mail.from_email = Email("DD-DeCaF <notifications@dd-decaf.eu>")
         mail.template_id = "d-8caebf4f862b4c67932515c45c5404cc"
         personalization = Personalization()
         personalization.add_to(Email(user_email))
