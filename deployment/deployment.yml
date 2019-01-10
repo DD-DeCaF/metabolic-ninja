@@ -102,6 +102,15 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: POSTGRES_PASS
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENDGRID_API_KEY
+        - name: IAM_API
+          value: http://iam-staging
+        - name: WAREHOUSE_API
+          value: http://warehouse-staging
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:

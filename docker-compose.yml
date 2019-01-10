@@ -30,7 +30,7 @@ services:
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
     - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
     - POSTGRES_PASS=${POSTGRES_PASS}
-    - IAM_API=https://api-staging.dd-decaf.eu/iam
+    - IAM_API=${IAM_API:-https://api-staging.dd-decaf.eu/iam}
     command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
@@ -52,6 +52,9 @@ services:
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
     - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
     - POSTGRES_PASS=${POSTGRES_PASS}
+    - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+    - IAM_API=${IAM_API:-https://api-staging.dd-decaf.eu/iam}
+    - WAREHOUSE_API=${WAREHOUSE_API:-https://api-staging.dd-decaf.eu/warehouse}
     - C_FORCE_ROOT=1
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
