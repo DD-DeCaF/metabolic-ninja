@@ -16,3 +16,4 @@ psycopg2-binary
 sqlalchemy
 Alembic
 cameo >= 0.11.9
+sendgrid
