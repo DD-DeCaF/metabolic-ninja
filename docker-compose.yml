@@ -39,6 +39,9 @@ services:
     - redis
     networks:
       default:
+      DD-DeCaF:
+        aliases:
+        - metabolic-ninja-worker
     volumes:
     - ".:/app"
     environment:
