@@ -145,7 +145,7 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
         concatenate.s() |
         persist.s(job_id) |
         notify.si(job_id, product_name, organism_id, user_name, user_email,
-                 organism_name)
+                  organism_name)
     ).on_error(fail_workflow.s(job_id))
     return self.replace(workflow)
 
