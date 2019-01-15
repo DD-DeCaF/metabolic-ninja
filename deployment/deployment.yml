@@ -108,9 +108,9 @@ spec:
               name: metabolic-ninja-staging
               key: SENDGRID_API_KEY
         - name: IAM_API
-          value: http://iam-staging
+          value: http://iam-staging/iam
         - name: WAREHOUSE_API
-          value: http://warehouse-staging
+          value: http://warehouse-staging/warehouse
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
