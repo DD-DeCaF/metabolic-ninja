@@ -366,21 +366,23 @@ def concatenate(results):
     # Flatten lists and convert design and pathway to dictionary.
     for row in iter_chain.from_iterable(results):
         reactions.update(**{
-            r.id: reaction_to_dict(r) for r in row["heterologous_reactions"]
+            r.id: reaction_to_dict(r) for r in row.get(
+                "heterologous_reactions", [])
         })
         metabolites.update(**{
-            m.id: metabolite_to_dict(m) for m in row["exotic_cofactors"]
+            m.id: metabolite_to_dict(m) for m in row.get("exotic_cofactors", [])
         })
-        row["knockouts"] = [t.id for t in row["knockouts"]]
+        row["knockouts"] = [t.id for t in row.get("knockouts", [])]
         row["heterologous_reactions"] = [
-            r.id for r in row["heterologous_reactions"]]
+            r.id for r in row.get("heterologous_reactions", [])]
         row["synthetic_reactions"] = [
-            r.id for r in row["synthetic_reactions"]]
+            r.id for r in row.get("synthetic_reactions", [])]
         row["exotic_cofactors"] = [
-            m.id for m in row["exotic_cofactors"]]
-        if row["method"] == "PathwayPredictor+DifferentialFVA":
+            m.id for m in row.get("exotic_cofactors", [])]
+        method = row.get("method")
+        if method == "PathwayPredictor+DifferentialFVA":
             diff_fva.append(row)
-        elif row["method"] == "PathwayPredictor+CofactorSwap":
+        elif method == "PathwayPredictor+CofactorSwap":
             cofactor_swap.append(row)
         else:
             raise ValueError("Unknown design method.")
