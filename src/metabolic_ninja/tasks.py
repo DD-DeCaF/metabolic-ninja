@@ -181,6 +181,11 @@ def optimize(self, pathways, model):
                 evaluate_exotic_cofactors.s(p, model)
             ),
             (
+                opt_gene.si(p, model) |
+                evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene") |
+                evaluate_exotic_cofactors.s(p, model)
+            ),
+            (
                 cofactor_swap_optimization.si(p, model) |
                 evaluate_cofactor_swap.s(p, model,
                                          "PathwayPredictor+CofactorSwap") |
@@ -307,7 +312,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
 
 
 @celery_app.task()
-def heuristic_optimization(pathway, model):
+def opt_gene(pathway, model):
     with model:
         pathway.apply(model)
         predictor = OptGene(
@@ -323,6 +328,47 @@ def heuristic_optimization(pathway, model):
             max_time=120
         )
     return designs
+
+
+@celery_app.task()
+def evaluate_opt_gene(designs, pathway, model, method):
+    if designs is None:
+        return []
+    logger.info(f"Evaluating {len(designs)} OptGene designs.")
+    pyield = product_yield(pathway.product, model.carbon_source)
+    bpcy = biomass_product_coupled_min_yield(
+        model.biomass, pathway.product, model.carbon_source)
+    results = []
+    with model:
+        pathway.apply(model)
+        for design_result in designs:
+            with model:
+                design_result.apply(model)
+                try:
+                    model.objective = model.biomass
+                    solution = model.optimize()
+                    p_yield = pyield(model, solution, pathway.product)
+                    bpc_yield = bpcy(model, solution, pathway.product)
+                    target_flux = solution[pathway.product.id]
+                    biomass = solution[model.biomass]
+                except (OptimizationError, ZeroDivisionError):
+                    p_yield = None
+                    bpc_yield = None
+                    target_flux = None
+                    biomass = None
+                knockouts = {g for g in design_result.targets
+                             if isinstance(g, targets.GeneKnockoutTarget)}
+                results.append({
+                    "knockouts": list(knockouts),
+                    "heterologous_reactions": pathway.reactions,
+                    "synthetic_reactions": pathway.exchanges,
+                    "fitness": bpc_yield,
+                    "yield": p_yield,
+                    "product": target_flux,
+                    "biomass": biomass,
+                    "method": method
+                })
+    return results
 
 
 @celery_app.task()
