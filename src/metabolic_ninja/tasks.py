@@ -409,6 +409,7 @@ def concatenate(results):
     metabolites = {}
     diff_fva = []
     cofactor_swap = []
+    opt_gene = []
     # Flatten lists and convert design and pathway to dictionary.
     for row in iter_chain.from_iterable(results):
         reactions.update(**{
@@ -430,11 +431,14 @@ def concatenate(results):
             diff_fva.append(row)
         elif method == "PathwayPredictor+CofactorSwap":
             cofactor_swap.append(row)
+        elif method == "PathwayPredictor+OptGene":
+            opt_gene.append(row)
         else:
             raise ValueError("Unknown design method.")
     return {
         "diff_fva": diff_fva,
         "cofactor_swap": cofactor_swap,
+        "opt_gene": opt_gene,
         "reactions": reactions,
         "metabolites": metabolites
     }
