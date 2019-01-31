@@ -419,6 +419,10 @@ def concatenate(results):
         metabolites.update(**{
             m.id: metabolite_to_dict(m) for m in row.get("exotic_cofactors", [])
         })
+        metabolites.update(**{
+            m.id: metabolite_to_dict(m) for r in row.get(
+                "heterologous_reactions", []) for m in r.metabolites
+        })
         row["knockouts"] = [t.id for t in row.get("knockouts", [])]
         row["manipulations"] = row.get("manipulations", [])
         row["heterologous_reactions"] = [
