@@ -170,6 +170,9 @@ def find_pathways(product, model, max_predictions, source):
     )
 
 
+# TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
+#  now. As there is an unresolved bug that will get in the way of the user
+#  review.
 @celery_app.task(bind=True)
 def optimize(self, pathways, model):
     return self.replace(group(
@@ -177,19 +180,19 @@ def optimize(self, pathways, model):
             (
                 differential_fva_optimization.si(p, model) |
                 evaluate_diff_fva.s(p, model,
-                                    "PathwayPredictor+DifferentialFVA") |
-                evaluate_exotic_cofactors.s(p, model)
+                                    "PathwayPredictor+DifferentialFVA")
+                # | evaluate_exotic_cofactors.s(p, model)
             ),
             (
                 opt_gene.si(p, model) |
-                evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene") |
-                evaluate_exotic_cofactors.s(p, model)
+                evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
+                # | evaluate_exotic_cofactors.s(p, model)
             ),
             (
                 cofactor_swap_optimization.si(p, model) |
                 evaluate_cofactor_swap.s(p, model,
-                                         "PathwayPredictor+CofactorSwap") |
-                evaluate_exotic_cofactors.s(p, model)
+                                         "PathwayPredictor+CofactorSwap")
+                # | evaluate_exotic_cofactors.s(p, model)
             )
         ) for p in pathways)
     )
