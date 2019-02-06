@@ -240,6 +240,8 @@ def test_compute_chemical_linkage_strength(counts_a, counts_d, expected_scl):
         counts_a, counts_d) == pytest.approx(expected_scl, rel=0.0, abs=0.1)
 
 
+@pytest.mark.skip(reason="Evaluation of exotic cofactors is temporarily "
+                         "disabled")
 @pytest.mark.parametrize("model, pathway, exotic_cofactors", [
     ("bare_mini", "straight_pathway", set()),
     ("bare_mini", "straight_pathway_with_cofactors", {"c_p_c", "d_p_c"}),
