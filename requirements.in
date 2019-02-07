@@ -15,5 +15,5 @@ flask-sqlalchemy
 psycopg2-binary
 sqlalchemy
 Alembic
-cameo == 0.11.9
+cameo >= 0.11.11
 sendgrid
