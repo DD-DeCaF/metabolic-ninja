@@ -32,7 +32,7 @@ celery_app.conf.update(
     result_expires=604800,  # 7 days
     # Reboot worker if consuming too much memory. This is a workaround for
     # expected memory leak in the cameo workflow.
-    worker_max_memory_per_child=(5 * 1000 * 1000 * 1000),  # 5GB
+    worker_max_memory_per_child=(5 * 1000 * 1000),  # 5GB
     task_serializer='pickle',
     result_serializer='pickle',
     accept_content=['pickle']
