@@ -15,6 +15,7 @@
 
 from cameo.models import universal
 
+
 UNIVERSAL_SOURCES = {
     (True, False): universal.metanetx_universal_model_bigg,
     (True, True): universal.metanetx_universal_model_bigg_rhea,

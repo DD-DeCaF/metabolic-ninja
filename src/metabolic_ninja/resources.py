@@ -16,6 +16,7 @@
 """Implement RESTful API endpoints using resources."""
 
 import json
+
 import requests
 from flask import g
 from flask_apispec import MethodResource, marshal_with, use_kwargs
