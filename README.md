@@ -52,3 +52,12 @@ You also need to create the database and tables like so:
 Before deploying the service you should run those commands with the `-e 
 ENVIRONMENT=production` or `staging` flag in order to create the required 
 tables on our production/staging database.
+
+## Products
+
+The Products API resource lists all the metabolites in the universal model
+`cameo.models.universal.metanetx_universal_model_bigg_rhea`. To allow the web
+service to avoid loading the large universal models into memory, the list of
+metabolites is written to `data/products.json` by the script
+`src/tools/dump_products.py`. This dump must be updated whenever the list of
+metabolites in the universal model changes.
