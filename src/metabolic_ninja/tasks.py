@@ -32,6 +32,7 @@ from celery.utils.log import get_task_logger
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
+from numpy import isnan
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Email, Mail, Personalization
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -252,10 +253,10 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         manipulation_helper(t) for t in manipulations],
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": pathway.exchanges,
-                    "fitness": bpc_yield,
-                    "yield": p_yield,
-                    "product": target_flux,
-                    "biomass": biomass,
+                    "fitness": None if isnan(bpc_yield) else bpc_yield,
+                    "yield": None if isnan(p_yield) else p_yield,
+                    "product": None if isnan(target_flux) else target_flux,
+                    "biomass": None if isnan(biomass) else biomass,
                     "method": method
                 })
     return results
@@ -306,7 +307,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             "heterologous_reactions": pathway.reactions,
             "synthetic_reactions": pathway.exchanges,
             "fitness": None,
-            "yield": row.fitness,
+            "yield": None if isnan(row.fitness) else row.fitness,
             "product": None,
             "biomass": None,
             "method": method
@@ -365,10 +366,10 @@ def evaluate_opt_gene(designs, pathway, model, method):
                     "knockouts": list(knockouts),
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": pathway.exchanges,
-                    "fitness": bpc_yield,
-                    "yield": p_yield,
-                    "product": target_flux,
-                    "biomass": biomass,
+                    "fitness": None if isnan(bpc_yield) else bpc_yield,
+                    "yield": None if isnan(p_yield) else p_yield,
+                    "product": None if isnan(target_flux) else target_flux,
+                    "biomass": None if isnan(biomass) else biomass,
                     "method": method
                 })
     return results
