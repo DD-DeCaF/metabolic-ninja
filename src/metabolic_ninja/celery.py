@@ -33,6 +33,10 @@ celery_app.conf.update(
     # Reboot worker if consuming too much memory. This is a workaround for
     # expected memory leak in the cameo workflow.
     worker_max_memory_per_child=(5 * 1000 * 1000),  # 5GB
+    # Our tasks are expected to be mostly cpu bound, so the number of concurrent
+    # processes is set to match the number of cores available in the deployment
+    # configuration, currently 4 vCPUs.
+    worker_concurrency=4,
     task_serializer='pickle',
     result_serializer='pickle',
     accept_content=['pickle']
