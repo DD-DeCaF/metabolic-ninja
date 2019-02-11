@@ -15,6 +15,7 @@
 
 """Implement RESTful API endpoints using resources."""
 
+import json
 import requests
 from flask import g
 from flask_apispec import MethodResource, marshal_with, use_kwargs
@@ -27,7 +28,10 @@ from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
 from .schemas import PredictionJobRequestSchema, PredictionJobSchema
 from .tasks import predict
-from .universal import UNIVERSAL_SOURCES
+
+
+with open("data/products.json") as file_:
+    PRODUCT_LIST = json.load(file_)
 
 
 class PredictionJobsResource(MethodResource):
@@ -129,11 +133,7 @@ class PredictionJobResource(MethodResource):
 
 class ProductsResource(MethodResource):
     def get(self):
-        database = UNIVERSAL_SOURCES[(True, True)]
-        return [
-            {'name': m.name}
-            for m in database.metabolites
-        ]
+        return PRODUCT_LIST
 
 
 def init_app(app):
