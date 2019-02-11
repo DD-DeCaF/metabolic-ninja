@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cameo.models import universal
+import json
 
-UNIVERSAL_SOURCES = {
-    (True, False): universal.metanetx_universal_model_bigg,
-    (True, True): universal.metanetx_universal_model_bigg_rhea,
-    (False, True): universal.metanetx_universal_model_rhea,
-}
+from cameo.models.universal import metanetx_universal_model_bigg_rhea
+
+
+with open("data/products.json", "w") as file_:
+    json.dump(
+        [{"name": m.name} for m in metanetx_universal_model_bigg_rhea.metabolites],
+        file_,
+    )
