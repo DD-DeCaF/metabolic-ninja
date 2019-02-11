@@ -87,9 +87,9 @@ databases:
 	docker-compose run --rm web flask db upgrade
 	docker-compose stop
 
-## Create a JSON dump of available metabolites.
-dump-metabolites:
-	docker-compose run --rm web python src/tools/dump_metabolites.py
+## Create a JSON dump of available products from metabolites in the universal model.
+dump-products:
+	docker-compose run --rm web python src/tools/dump_products.py
 
 #################################################################################
 # Self Documenting Commands                                                     #
