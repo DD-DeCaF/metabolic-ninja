@@ -1,5 +1,6 @@
 *
 !migrations/
+!data/
 !src/
 !scripts/
 !tests/
