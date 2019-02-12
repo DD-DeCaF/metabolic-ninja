@@ -89,7 +89,7 @@ databases:
 
 ## Create a JSON dump of available products from metabolites in the universal model.
 dump-products:
-	docker-compose run --rm web python src/tools/dump_products.py
+	docker-compose run --rm web python src/scripts/dump_products.py
 
 #################################################################################
 # Self Documenting Commands                                                     #
