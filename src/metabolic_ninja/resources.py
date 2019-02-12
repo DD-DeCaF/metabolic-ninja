@@ -62,7 +62,7 @@ class PredictionJobsResource(MethodResource):
         # Verify the request by loading the model from the model-storage
         # service.
         headers = {
-            "Authorization": g.jwt_token,
+            "Authorization": f"Bearer {g.jwt_token}",
         }
         model = self.retrieve_model_json(model_id, headers)
         # Job accepted. Before submitting the job, create a corresponding empty
