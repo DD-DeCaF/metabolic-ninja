@@ -244,6 +244,15 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     bpc_yield = None
                     target_flux = None
                     biomass = None
+                else:
+                    if isnan(p_yield):
+                        p_yield = None
+                    if isnan(bpc_yield):
+                        bpc_yield = None
+                    if isnan(target_flux):
+                        target_flux = None
+                    if isnan(biomass):
+                        biomass = None
                 knockouts = {r for r in design_result.targets
                              if isinstance(r, targets.ReactionKnockoutTarget)}
                 manipulations = set(design_result.targets).difference(knockouts)
@@ -253,10 +262,10 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         manipulation_helper(t) for t in manipulations],
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": pathway.exchanges,
-                    "fitness": None if isnan(bpc_yield) else bpc_yield,
-                    "yield": None if isnan(p_yield) else p_yield,
-                    "product": None if isnan(target_flux) else target_flux,
-                    "biomass": None if isnan(biomass) else biomass,
+                    "fitness": bpc_yield,
+                    "yield": p_yield,
+                    "product": target_flux,
+                    "biomass": biomass,
                     "method": method
                 })
     return results
@@ -360,16 +369,25 @@ def evaluate_opt_gene(designs, pathway, model, method):
                     bpc_yield = None
                     target_flux = None
                     biomass = None
+                else:
+                    if isnan(p_yield):
+                        p_yield = None
+                    if isnan(bpc_yield):
+                        bpc_yield = None
+                    if isnan(target_flux):
+                        target_flux = None
+                    if isnan(biomass):
+                        biomass = None
                 knockouts = {g for g in design_result.targets
                              if isinstance(g, targets.GeneKnockoutTarget)}
                 results.append({
                     "knockouts": list(knockouts),
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": pathway.exchanges,
-                    "fitness": None if isnan(bpc_yield) else bpc_yield,
-                    "yield": None if isnan(p_yield) else p_yield,
-                    "product": None if isnan(target_flux) else target_flux,
-                    "biomass": None if isnan(biomass) else biomass,
+                    "fitness": bpc_yield,
+                    "yield": p_yield,
+                    "product": target_flux,
+                    "biomass": biomass,
                     "method": method
                 })
     return results
