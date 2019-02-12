@@ -18,7 +18,6 @@ from contextlib import contextmanager
 from itertools import chain as iter_chain
 
 import cameo.core.target as targets
-import requests
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
