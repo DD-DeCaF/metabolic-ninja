@@ -59,5 +59,5 @@ The Products API resource lists all the metabolites in the universal model
 `cameo.models.universal.metanetx_universal_model_bigg_rhea`. To allow the web
 service to avoid loading the large universal models into memory, the list of
 metabolites is written to `data/products.json` by the script
-`src/tools/dump_products.py`. This dump must be updated whenever the list of
+`src/scripts/dump_products.py`. This dump must be updated whenever the list of
 metabolites in the universal model changes.
