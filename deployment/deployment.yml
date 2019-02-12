@@ -34,7 +34,9 @@ spec:
         - name: MODEL_STORAGE_API
           value: https://api-staging.dd-decaf.eu/mstorage
         - name: IAM_API
-          value: https://api-staging.dd-decaf.eu/iam
+          value: http://iam-staging/iam
+        - name: WAREHOUSE_API
+          value: http://warehouse-staging/warehouse
         - name: POSTGRES_HOST
           value: localhost
         - name: POSTGRES_PORT
@@ -107,10 +109,6 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: SENDGRID_API_KEY
-        - name: IAM_API
-          value: http://iam-staging/iam
-        - name: WAREHOUSE_API
-          value: http://warehouse-staging/warehouse
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
