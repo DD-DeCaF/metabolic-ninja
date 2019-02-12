@@ -78,7 +78,8 @@ def fail_workflow(request, exc, traceback, job_id):
 
 @celery_app.task(bind=True)
 def predict(self, model_obj, product_name, max_predictions, aerobic,
-            databases, job_id, organism_id, token):
+            databases, job_id, organism_id, organism_name, user_name,
+            user_email):
     """
     Define and start a design prediction workflow.
 
@@ -90,7 +91,9 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     :param databases:
     :param job_id:
     :param organism_id:
-    :param token:
+    :param organism_name:
+    :param user_name:
+    :param user_email:
     :return:
 
     """
@@ -122,22 +125,6 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     #  default_biomass_reaction. Maybe we need a new field for the medium
     #  database model?
     model.carbon_source = "EX_glc__D_e"
-    # Retrieve user details. This should be retrieved here, to ensure that the
-    # JWT has not expired by the time it is used.
-    response = requests.get(f"{os.environ['IAM_API']}/user", headers={
-        'Authorization': f"Bearer {token}",
-    })
-    response.raise_for_status()
-    user = response.json()
-    user_name = f"{user['first_name']} {user['last_name']}"
-    user_email = user['email']
-    # Retrieve the organism name.
-    response = requests.get(
-        f"{os.environ['WAREHOUSE_API']}/organisms/{organism_id}",
-        headers={'Authorization': f"Bearer {token}"},
-    )
-    response.raise_for_status()
-    organism_name = response.json()['name']
     # Define the workflow.
     workflow = (
         find_product.s(product_name, source) |

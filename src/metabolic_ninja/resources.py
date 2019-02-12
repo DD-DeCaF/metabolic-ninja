@@ -16,6 +16,7 @@
 """Implement RESTful API endpoints using resources."""
 
 import json
+import os
 
 import requests
 from flask import g
@@ -71,10 +72,27 @@ class PredictionJobsResource(MethodResource):
                         max_predictions=max_predictions, status='PENDING')
         db.session.add(job)
         db.session.commit()
+        # Fetch details about the user and organism name, to be used in the
+        # notification email. This must be done here while the token is still
+        # valid.
+        response = requests.get(f"{os.environ['IAM_API']}/user", headers={
+            'Authorization': f"Bearer {g.jwt_token}",
+        })
+        response.raise_for_status()
+        user = response.json()
+        user_name = f"{user['first_name']} {user['last_name']}"
+        user_email = user['email']
+        # Retrieve the organism name.
+        response = requests.get(
+            f"{os.environ['WAREHOUSE_API']}/organisms/{organism_id}",
+            headers={'Authorization': f"Bearer {g.jwt_token}"},
+        )
+        response.raise_for_status()
+        organism_name = response.json()['name']
         # Submit a prediction to the celery queue.
         result = predict.delay(model, product_name, max_predictions,
                                aerobic, (bigg, rhea), job.id, organism_id,
-                               g.jwt_token)
+                               organism_name, user_name, user_email)
         return {
             'id': job.id,
             'state': result.state,
