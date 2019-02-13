@@ -65,7 +65,6 @@ while True:
             "metabolic ninja. Consider running BGREWRITEAOF."
         )
     logger.info(
-        f"Disk usage: {usage_gb}GB/{total_gb}GB ({pct_free}% free), sleeping "
-        "for 24 hours..."
+        f"Disk usage: {usage_gb}GB/{total_gb}GB ({pct_free}% free), sleeping..."
     )
-    time.sleep(24 * 60 * 60)  # sleep 24 hours
+    time.sleep(60 * 60)  # sleep 1 hour
