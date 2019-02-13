@@ -152,6 +152,23 @@ spec:
             cpu: "10m"
           limits:
             cpu: "2000m"
+      - name: disk-usage
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        command: ["python", "-m", "disk_usage.main"]
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: "/data"
+            name: metabolic-ninja-staging
       - name: cloudsql-proxy
         image: gcr.io/cloudsql-docker/gce-proxy:1.11
         command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
