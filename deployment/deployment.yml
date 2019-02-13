@@ -119,7 +119,7 @@ spec:
         image: redis:latest
         ports:
         - containerPort: 6379
-        command: ["redis-server", "--save 300 10"]
+        command: ["redis-server", "--save 900 1 300 10"]
         resources:
           requests:
             cpu: "10m"
