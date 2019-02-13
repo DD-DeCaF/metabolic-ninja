@@ -30,9 +30,9 @@ celery_app.conf.update(
     task_time_limit=7200,  # 2 hours
     # Time after which a successful result will be removed.
     result_expires=604800,  # 7 days
-    # Reboot worker if consuming too much memory. This is a workaround for
-    # expected memory leak in the cameo workflow.
-    worker_max_memory_per_child=(5 * 1000 * 1000),  # 5GB
+    # Reboot worker processes if consuming too much memory. This is a workaround
+    # for expected memory leak in the cameo workflow.
+    worker_max_memory_per_child=(1.5 * 1000 * 1000),  # 1.5 GB
     # Our tasks are expected to be mostly cpu bound, so the number of concurrent
     # processes is set to match the number of cores available in the deployment
     # configuration, currently 4 vCPUs.
