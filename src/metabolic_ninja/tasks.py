@@ -187,13 +187,32 @@ def optimize(self, pathways, model):
 
 @celery_app.task()
 def differential_fva_optimization(pathway, model):
+    """
+    Compare FVA results on the production plane with maximum growth.
+
+    Parameters
+    ----------
+    pathway :
+        A heterologous pathway identified by cameo.
+    model : cobra.Model
+        The model under investigation.
+
+    Returns
+    -------
+    cameo.design
+        A number of differential FVA designs corresponding to evenly spaced
+        points on the surface of the phenotypic phase plane.
+
+    """
     with model:
         pathway.apply(model)
         predictor = DifferentialFVA(
             design_space_model=model,
             objective=pathway.product.id,
             variables=[model.biomass],
-            points=10
+            # Excluding the maxima, this corresponds to five evenly spaced
+            # designs.
+            points=5
         )
         try:
             designs = predictor.run(progress=False)
@@ -206,16 +225,21 @@ def differential_fva_optimization(pathway, model):
 
 @celery_app.task()
 def evaluate_diff_fva(designs, pathway, model, method):
+    """Evaluate the differential FVA designs."""
     if designs is None:
         return []
-    logger.info(f"Evaluating {len(designs)} differential FVA surface points.")
+    logger.info(
+        f"Evaluating {len(designs) - 2} differential FVA surface points."
+    )
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
         model.biomass, pathway.product, model.carbon_source)
     results = []
+    designs = list(designs)
     with model:
         pathway.apply(model)
-        for design_result in designs:
+        # Ignore zero production and zero growth points.
+        for design_result in designs[1: len(designs) - 1]:
             with model:
                 design_result.apply(model)
                 try:
@@ -285,7 +309,7 @@ def cofactor_swap_optimization(pathway, model):
             model=model,
             objective_function=pyield
         )
-        designs = predictor.run(max_size=15)
+        designs = predictor.run(max_size=5)
     return designs
 
 
@@ -323,7 +347,7 @@ def opt_gene(pathway, model):
             biomass=model.biomass,
             substrate=model.carbon_source,
             max_evaluations=1500,
-            max_knockouts=15,
+            max_knockouts=5,
             max_time=120
         )
     return designs
