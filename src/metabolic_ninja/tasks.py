@@ -309,7 +309,7 @@ def cofactor_swap_optimization(pathway, model):
             model=model,
             objective_function=pyield
         )
-        designs = predictor.run(max_size=15)
+        designs = predictor.run(max_size=5)
     return designs
 
 
