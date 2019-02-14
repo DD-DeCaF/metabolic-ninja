@@ -185,6 +185,21 @@ def optimize(self, pathways, model):
     )
 
 
+def find_synthetic_reactions(pathway):
+    metabolites = {m for r in pathway.reactions for m in r.metabolites}
+    # Products of adapter reactions correspond to the metabolites in MetaNetX
+    # namespace. Any metabolite for which an adapter exists is a native
+    # compound.
+    foreign = metabolites - {m for r in pathway.adapters for m in r.products}
+    # Create a set of demand reactions for any foreign metabolites.
+    demand_rxns = {
+        r for r in pathway.exchanges if set(r.reactants).issubset(foreign)
+    }
+    # Add the demand reaction for the final product.
+    demand_rxns.add(pathway.product)
+    return demand_rxns
+
+
 @celery_app.task()
 def differential_fva_optimization(pathway, model):
     """
@@ -271,7 +286,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     "manipulations": [
                         manipulation_helper(t) for t in manipulations],
                     "heterologous_reactions": pathway.reactions,
-                    "synthetic_reactions": pathway.exchanges,
+                    "synthetic_reactions": find_synthetic_reactions(pathway),
                     "fitness": bpc_yield,
                     "yield": p_yield,
                     "product": target_flux,
@@ -324,7 +339,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             "manipulations": [{"id": r, "from": "NADH", "to": "NADPH"}
                               for r in row.targets],
             "heterologous_reactions": pathway.reactions,
-            "synthetic_reactions": pathway.exchanges,
+            "synthetic_reactions": find_synthetic_reactions(pathway),
             "fitness": None,
             "yield": None if isnan(row.fitness) else row.fitness,
             "product": None,
@@ -393,7 +408,7 @@ def evaluate_opt_gene(designs, pathway, model, method):
                 results.append({
                     "knockouts": list(knockouts),
                     "heterologous_reactions": pathway.reactions,
-                    "synthetic_reactions": pathway.exchanges,
+                    "synthetic_reactions": find_synthetic_reactions(pathway),
                     "fitness": bpc_yield,
                     "yield": p_yield,
                     "product": target_flux,
@@ -447,6 +462,10 @@ def concatenate(results):
         reactions.update(**{
             r.id: reaction_to_dict(r) for r in row.get(
                 "heterologous_reactions", [])
+        })
+        reactions.update(**{
+            r.id: reaction_to_dict(r) for r in row.get(
+                "synthetic_reactions", [])
         })
         metabolites.update(**{
             m.id: metabolite_to_dict(m) for m in row.get("exotic_cofactors", [])
