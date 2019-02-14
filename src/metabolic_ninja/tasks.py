@@ -347,7 +347,7 @@ def opt_gene(pathway, model):
             biomass=model.biomass,
             substrate=model.carbon_source,
             max_evaluations=1500,
-            max_knockouts=15,
+            max_knockouts=5,
             max_time=120
         )
     return designs
