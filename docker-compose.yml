@@ -32,6 +32,7 @@ services:
     - POSTGRES_PASS=${POSTGRES_PASS}
     - IAM_API=${IAM_API:-https://api-staging.dd-decaf.eu/iam}
     - WAREHOUSE_API=${WAREHOUSE_API:-https://api-staging.dd-decaf.eu/warehouse}
+    - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
     command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
@@ -55,6 +56,7 @@ services:
     - POSTGRES_PASS=${POSTGRES_PASS}
     - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     - C_FORCE_ROOT=1
+    - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
   flower:
@@ -69,6 +71,7 @@ services:
     - ".:/app"
     environment:
     - REDIS_HOST=${REDIS_HOST:-redis:6379}
+    - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
     command: celery flower -A metabolic_ninja --broker=redis://redis:6379/0
 
   redis:

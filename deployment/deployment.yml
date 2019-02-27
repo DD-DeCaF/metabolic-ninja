@@ -63,6 +63,8 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: POSTGRES_PASS
+        - name: WORKER_CONCURRENCY
+          value: "4"
         command: ["/bin/sh", "-c"]
         args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
         readinessProbe:
@@ -109,6 +111,8 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: SENDGRID_API_KEY
+        - name: WORKER_CONCURRENCY
+          value: "4"
         command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
         resources:
           requests:
@@ -146,6 +150,8 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: FLOWER_PASSWORD
+        - name: WORKER_CONCURRENCY
+          value: "4"
         command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
         resources:
           requests:
