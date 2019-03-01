@@ -152,7 +152,7 @@ def find_pathways(product, model, max_predictions, source):
     return predictor.run(
         product,
         max_predictions=max_predictions,
-        timeout=60,
+        timeout=120,  # seconds
         silent=True
     )
 
@@ -361,9 +361,9 @@ def opt_gene(pathway, model):
             target=pathway.product.id,
             biomass=model.biomass,
             substrate=model.carbon_source,
-            max_evaluations=1500,
+            max_evaluations=int(1E06),
             max_knockouts=5,
-            max_time=120
+            max_time=(2, 0, 0)  # (hours, minutes, seconds)
         )
     return designs
 
