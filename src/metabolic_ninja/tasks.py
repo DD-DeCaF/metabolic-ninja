@@ -361,7 +361,7 @@ def opt_gene(pathway, model):
             target=pathway.product.id,
             biomass=model.biomass,
             substrate=model.carbon_source,
-            max_evaluations=1500,
+            max_evaluations=9999999999,
             max_knockouts=5,
             max_time=(2, 0, 0)  # (hours, minutes, seconds)
         )
