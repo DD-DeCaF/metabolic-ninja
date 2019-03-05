@@ -27,7 +27,7 @@ celery_app = Celery(
 celery_app.conf.update(
     task_track_started=True,
     # Time after which a running job will be interrupted.
-    task_time_limit=7200,  # 2 hours
+    task_time_limit=7260,  # 2 hours 1 minute
     # Time after which a successful result will be removed.
     result_expires=604800,  # 7 days
     # Reboot worker processes if consuming too much memory. This is a workaround
