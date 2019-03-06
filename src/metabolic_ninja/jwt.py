@@ -19,6 +19,7 @@ import logging
 from functools import wraps
 
 from flask import abort, g, request
+
 from jose import jwt
 
 
