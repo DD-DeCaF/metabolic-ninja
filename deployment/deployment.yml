@@ -152,7 +152,7 @@ spec:
               key: FLOWER_PASSWORD
         - name: WORKER_CONCURRENCY
           value: "4"
-        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--url_prefix=/metabolic-ninja", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
+        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
         resources:
           requests:
             cpu: "10m"

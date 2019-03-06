@@ -26,17 +26,16 @@ metadata:
   name: metabolic-ninja-flower-staging
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   tls:
   - hosts:
-    - flower.dd-decaf.eu
+    - flower-metabolic-ninja.dd-decaf.eu
     secretName: decaf-tls
   rules:
-  - host: flower.dd-decaf.eu
+  - host: flower-metabolic-ninja.dd-decaf.eu
     http:
       paths:
-      - path: /metabolic-ninja
+      - path: /
         backend:
           serviceName: metabolic-ninja-staging
           servicePort: 5555
