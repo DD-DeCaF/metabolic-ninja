@@ -5,9 +5,7 @@ sentry-sdk[flask]
 gunicorn
 gevent
 celery[redis]
-# Celery is not compatible with redis 3, but we need to restrict the redis
-# version manually. See https://github.com/celery/celery/issues/5178
-redis<3.0.0
+redis
 flower
 python-jose
 Flask-Migrate
