@@ -23,7 +23,6 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
 from sentry_sdk.integrations.flask import FlaskIntegration
-
 from werkzeug.contrib.fixers import ProxyFix
 
 from . import jwt

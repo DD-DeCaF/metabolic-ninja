@@ -18,12 +18,11 @@
 import json
 import os
 
+import requests
 from flask import g
 from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 from sqlalchemy.orm.exc import NoResultFound
-
-import requests
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from .app import app

@@ -16,11 +16,11 @@
 """Test expected functioning of the helper functions."""
 
 
+import cobra
 import pytest
 from cameo.strain_design.pathway_prediction.pathway_predictor import (
     PathwayResult)
 
-import cobra
 import metabolic_ninja.helpers as helpers
 
 

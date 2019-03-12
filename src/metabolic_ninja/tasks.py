@@ -28,16 +28,15 @@ from cameo.strain_design.heuristic.evolutionary_based import (
 from cameo.strain_design.pathway_prediction import PathwayPredictor
 from celery import group
 from celery.utils.log import get_task_logger
+from cobra.exceptions import OptimizationError
+from cobra.io import model_from_dict
+from cobra.io.dict import metabolite_to_dict, reaction_to_dict
+from numpy import isnan
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Email, Mail, Personalization
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from cobra.exceptions import OptimizationError
-from cobra.io import model_from_dict
-from cobra.io.dict import metabolite_to_dict, reaction_to_dict
-from numpy import isnan
 
 from .celery import celery_app
 from .helpers import identify_exotic_cofactors
