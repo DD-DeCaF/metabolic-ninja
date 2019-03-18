@@ -23,9 +23,17 @@ reported to Sentry for notification.
 import logging
 import logging.config
 import os
+import signal
+import sys
 import time
 
 import sentry_sdk
+
+
+def handle_signal(sig, frame):
+    print("Handling signal: SIGTERM; exiting.")
+    sys.exit(0)
+
 
 logging.config.dictConfig({
     'version': 1,
@@ -49,6 +57,7 @@ logging.config.dictConfig({
 })
 logger = logging.getLogger("disk-usage")
 sentry_sdk.init(os.environ['SENTRY_DSN'])
+signal.signal(signal.SIGTERM, handle_signal)
 
 
 while True:
