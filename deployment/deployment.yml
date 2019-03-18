@@ -70,8 +70,7 @@ spec:
               key: POSTGRES_PASS
         - name: WORKER_CONCURRENCY
           value: "4"
-        command: ["/bin/sh", "-c"]
-        args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
+        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
         readinessProbe:
           httpGet:
             path: /pathways-caffeine/healthz
