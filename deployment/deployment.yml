@@ -41,7 +41,7 @@ spec:
         - name: WAREHOUSE_API
           value: http://warehouse-staging/warehouse
         - name: POSTGRES_HOST
-          value: localhost
+          value: cloudsql-proxy
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
@@ -98,7 +98,7 @@ spec:
         - name: WAREHOUSE_API
           value: http://warehouse-staging/warehouse
         - name: POSTGRES_HOST
-          value: localhost
+          value: cloudsql-proxy
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
@@ -150,7 +150,7 @@ spec:
               name: metabolic-ninja-staging
               key: SENTRY_DSN
         - name: POSTGRES_HOST
-          value: localhost
+          value: cloudsql-proxy
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
@@ -234,22 +234,7 @@ spec:
         volumeMounts:
           - mountPath: "/data"
             name: metabolic-ninja-staging
-      - name: cloudsql-proxy
-        image: gcr.io/cloudsql-docker/gce-proxy:1.11
-        command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
-        volumeMounts:
-          - name: cloudsql-instance-credentials
-            mountPath: /secrets/cloudsql
-            readOnly: true
       volumes:
         - name: metabolic-ninja-staging
           persistentVolumeClaim:
            claimName: metabolic-ninja-staging
-        - name: cloudsql-instance-credentials
-          secret:
-            secretName: cloudsql-instance-credentials
