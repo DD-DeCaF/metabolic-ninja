@@ -31,7 +31,7 @@ import sentry_sdk
 
 
 def handle_signal(sig, frame):
-    print("Handling signal: SIGTERM; exiting.")
+    logger.info("Handling signal: SIGTERM; exiting.")
     sys.exit(0)
 
 
