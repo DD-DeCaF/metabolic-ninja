@@ -19,12 +19,10 @@ spec:
       # of 2 hours. The below value is then set to 2 hours plus 2 minutes to
       # allow for some small overhead.
       terminationGracePeriodSeconds: 7320
-      containers:
-      - name: web
+      initContainers:
+      - name: migrate
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
-        ports:
-        - containerPort: 8000
         env:
         - name: ENVIRONMENT
           value: production
@@ -43,7 +41,7 @@ spec:
         - name: WAREHOUSE_API
           value: http://warehouse-staging/warehouse
         - name: POSTGRES_HOST
-          value: localhost
+          value: cloudsql-proxy
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
@@ -70,8 +68,64 @@ spec:
               key: POSTGRES_PASS
         - name: WORKER_CONCURRENCY
           value: "4"
-        command: ["/bin/sh", "-c"]
-        args: ["flask db upgrade && gunicorn -c gunicorn.py metabolic_ninja.wsgi:app"]
+        command: ["flask", "db", "upgrade"]
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+      containers:
+      - name: web
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: production
+        - name: SCRIPT_NAME
+          value: /pathways-caffeine
+        - name: FLASK_APP
+          value: src/metabolic_ninja/wsgi.py
+        - name: ALLOWED_ORIGINS
+          value: https://caffeine.dd-decaf.eu,http://localhost:4200
+        - name: REDIS_HOST
+          value: localhost:6379
+        - name: MODEL_STORAGE_API
+          value: https://api-staging.dd-decaf.eu/mstorage
+        - name: IAM_API
+          value: http://iam-staging/iam
+        - name: WAREHOUSE_API
+          value: http://warehouse-staging/warehouse
+        - name: POSTGRES_HOST
+          value: cloudsql-proxy
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SECRET_KEY
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_PASS
+        - name: WORKER_CONCURRENCY
+          value: "4"
+        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
         readinessProbe:
           httpGet:
             path: /pathways-caffeine/healthz
@@ -96,7 +150,7 @@ spec:
               name: metabolic-ninja-staging
               key: SENTRY_DSN
         - name: POSTGRES_HOST
-          value: localhost
+          value: cloudsql-proxy
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
@@ -180,22 +234,7 @@ spec:
         volumeMounts:
           - mountPath: "/data"
             name: metabolic-ninja-staging
-      - name: cloudsql-proxy
-        image: gcr.io/cloudsql-docker/gce-proxy:1.11
-        command: ["/cloud_sql_proxy", "-instances=dd-decaf-cfbf6:europe-west1:dd-decaf=tcp:5432", "-credential_file=/secrets/cloudsql/credentials.json"]
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
-        volumeMounts:
-          - name: cloudsql-instance-credentials
-            mountPath: /secrets/cloudsql
-            readOnly: true
       volumes:
         - name: metabolic-ninja-staging
           persistentVolumeClaim:
            claimName: metabolic-ninja-staging
-        - name: cloudsql-instance-credentials
-          secret:
-            secretName: cloudsql-instance-credentials
