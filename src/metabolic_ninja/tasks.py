@@ -248,6 +248,7 @@ def differential_fva_optimization(pathway, model):
             design_space_model=model,
             objective=pathway.product.id,
             variables=[model.biomass],
+            normalize_ranges_by=model.biomass,
             # Excluding the maxima, this corresponds to five evenly spaced
             # designs.
             points=5,
