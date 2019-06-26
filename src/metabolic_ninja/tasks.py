@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from itertools import chain as iter_chain
 
 import cameo.core.target as targets
+import cobra
 import sentry_sdk
 from cameo.api import design
 from cameo.strain_design import DifferentialFVA, OptGene
@@ -53,6 +54,10 @@ logger = get_task_logger(__name__)
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN"), integrations=[CeleryIntegration()]
 )
+config = cobra.Configuration()
+# The Celery workers are not allowed to spawn processes. We prevent this here
+# explicitly by disabling multiprocessing in cobra.
+config.processes = 1
 
 
 @contextmanager
