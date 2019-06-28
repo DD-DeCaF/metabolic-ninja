@@ -95,9 +95,7 @@ def evaluate_production(
         solution = model.optimize()
         production_flux = solution[production_id]
     except OptimizationError as error:
-        logger.error(
-            "Could not determine production due to a solver error. %r", error
-        )
+        logger.error("Could not determine production due to a solver error. %r", error)
         production_flux = None
         production_flux_yield = None
         production_carbon_yield = None
@@ -134,10 +132,7 @@ def evaluate_production(
 
 
 def evaluate_biomass_coupled_production(
-    model: cobra.Model,
-    production_id: str,
-    biomass_id: str,
-    carbon_source_id: str,
+    model: cobra.Model, production_id: str, biomass_id: str, carbon_source_id: str
 ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     """
     Evaluate the biomass coupled production levels in the specific conditions.
@@ -172,9 +167,7 @@ def evaluate_biomass_coupled_production(
             The maximal biomass coupled minimal product yield if any.
 
     """
-    bpcy = biomass_product_coupled_yield(
-        biomass_id, production_id, carbon_source_id
-    )
+    bpcy = biomass_product_coupled_yield(biomass_id, production_id, carbon_source_id)
     bpcmy = biomass_product_coupled_min_yield(
         biomass_id, production_id, carbon_source_id
     )
