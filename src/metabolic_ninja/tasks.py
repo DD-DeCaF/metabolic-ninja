@@ -1,3 +1,4 @@
+# flake8: noqa
 # Copyright (c) 2018, Novo Nordisk Foundation Center for Biosustainability,
 # Technical University of Denmark.
 #
@@ -43,7 +44,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .celery import celery_app
-from .evaluate import evaluate_production, evaluate_biomass_coupled_production
+from .evaluate import evaluate_biomass_coupled_production, evaluate_production
 from .helpers import identify_exotic_cofactors
 from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
@@ -196,18 +197,20 @@ def optimize(self, pathways, model):
                     )
                     # | evaluate_exotic_cofactors.s(p, model)
                 ),
-                (
-                    opt_gene.si(p, model)
-                    | evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
-                    # | evaluate_exotic_cofactors.s(p, model)
-                ),
-                (
-                    cofactor_swap_optimization.si(p, model)
-                    | evaluate_cofactor_swap.s(
-                        p, model, "PathwayPredictor+CofactorSwap"
-                    )
-                    # | evaluate_exotic_cofactors.s(p, model)
-                ),
+                # FIXME (Moritz): Disabled for fast test on staging.
+                # (
+                #     opt_gene.si(p, model)
+                #     | evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
+                #     # | evaluate_exotic_cofactors.s(p, model)
+                # ),
+                # FIXME (Moritz): Disabled for fast test on staging.
+                # (
+                #     cofactor_swap_optimization.si(p, model)
+                #     | evaluate_cofactor_swap.s(
+                #         p, model, "PathwayPredictor+CofactorSwap"
+                #     )
+                #     # | evaluate_exotic_cofactors.s(p, model)
+                # ),
             )
             for p in pathways
         )
@@ -285,37 +288,42 @@ def evaluate_diff_fva(designs, pathway, model, method):
         # original five points remain. The first point in order represents
         # maximum production and zero growth. We ignore the point of lowest
         # production (the last one in order).
-        for index in range(0, len(designs) - 1):
-            design_result = designs.nth_panel(index)
-            with model:
-                design_result.apply(model)
-                with model:
-                    production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
-                with model:
-                    growth, bpcy, _ = evaluate_biomass_coupled_production(model, pathway.product.id, model.carbon_source)
-                knockouts = {
-                    r
-                    for r in design_result.targets
-                    if isinstance(r, targets.ReactionKnockoutTarget)
+        # for index in range(0, len(designs) - 1):
+            # design_result = designs.nth_panel(index)
+            # with model:
+            #     design_result.apply(model)
+            #     with model:
+            #         production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
+            #     with model:
+            #         growth, bpcy, _ = evaluate_biomass_coupled_production(model, pathway.product.id, model.carbon_source)
+        for design_result in designs[:-1]:
+            knockouts = {
+                r
+                for r in design_result.targets
+                if isinstance(r, targets.ReactionKnockoutTarget)
+            }
+            manipulations = set(design_result.targets).difference(knockouts)
+            results.append(
+                {
+                    "knockouts": list(knockouts),
+                    "manipulations": [
+                        manipulation_helper(t) for t in manipulations
+                    ],
+                    "heterologous_reactions": pathway.reactions,
+                    "synthetic_reactions": find_synthetic_reactions(
+                        pathway
+                    ),
+                    # "fitness": bpcy,
+                    "fitness": None,
+                    # "yield": carbon_yield,
+                    "yield": None,
+                    # "product": production,
+                    "product": None,
+                    # "biomass": growth,
+                    "biomass": None,
+                    "method": method,
                 }
-                manipulations = set(design_result.targets).difference(knockouts)
-                results.append(
-                    {
-                        "knockouts": list(knockouts),
-                        "manipulations": [
-                            manipulation_helper(t) for t in manipulations
-                        ],
-                        "heterologous_reactions": pathway.reactions,
-                        "synthetic_reactions": find_synthetic_reactions(
-                            pathway
-                        ),
-                        "fitness": bpcy,
-                        "yield": carbon_yield,
-                        "product": production,
-                        "biomass": growth,
-                        "method": method,
-                    }
-                )
+            )
     return results
 
 
