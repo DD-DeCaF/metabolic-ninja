@@ -29,8 +29,9 @@ atom_pattern = re.compile(r"(?P<atom>[A-Z][a-z]?)(?P<count>[0-9]*)")
 def count_atoms(formula):
     """Convert a formula string into a dictionary of counts."""
     return {
-        m.group("atom"):
-        1 if len(m.group("count")) == 0 else int(m.group("count"))
+        m.group("atom"): 1
+        if len(m.group("count")) == 0
+        else int(m.group("count"))
         for m in atom_pattern.finditer(formula)
     }
 
@@ -79,7 +80,7 @@ def compute_chemical_linkage_strength(counts_a, counts_d):
     return scl / max(a_total, d_total)
 
 
-def identify_exotic_cofactors(pathway, model, threshold=1E-07):
+def identify_exotic_cofactors(pathway, model, threshold=1e-07):
     """
     Take a heterologous pathway and identify all non-native co-factors.
 
@@ -121,9 +122,7 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
     heterologous_reactions = frozenset(pathway.reactions)
     # The pathway `product` is a demand reaction.
     target = pathway.product.reactants[0]
-    atom_counts = {
-        target: count_atoms(target.formula)
-    }
+    atom_counts = {target: count_atoms(target.formula)}
     # We are interested in co-factors of real heterologous reactions only, i.e.,
     # not adapters nor exchanges.
     rxn_queue = list(target.reactions & heterologous_reactions)
@@ -154,24 +153,24 @@ def identify_exotic_cofactors(pathway, model, threshold=1E-07):
         options = []
         for compound in substrates:
             # Generate the atom counts from the formulae.
-            count = atom_counts.setdefault(compound,
-                                           count_atoms(compound.formula))
-            target_count = atom_counts.setdefault(target,
-                                                  count_atoms(target.formula))
-            scl = compute_chemical_linkage_strength(
-                count, target_count)
+            count = atom_counts.setdefault(
+                compound, count_atoms(compound.formula)
+            )
+            target_count = atom_counts.setdefault(
+                target, count_atoms(target.formula)
+            )
+            scl = compute_chemical_linkage_strength(count, target_count)
             options.append((compound, scl))
         # The maximum SCL is our candidate precursor.
         options.sort(key=itemgetter(1))
         logger.debug(f"Target: {target.id}")
         logger.debug(f"Precursor options: {options}")
         target, scl = options.pop()
-        logger.info(f"Picking {target.id} ({target.name}) with "
-                    f"SCL = {scl:.3G}.")
-        # All other substrates are potentially non-native co-factors.
-        exotic_cofactors.update(
-            set(o[0] for o in options) - adapted_sources
+        logger.info(
+            f"Picking {target.id} ({target.name}) with " f"SCL = {scl:.3G}."
         )
+        # All other substrates are potentially non-native co-factors.
+        exotic_cofactors.update(set(o[0] for o in options) - adapted_sources)
         # Add new reactions to exploration queue.
         rxn_queue.extend((target.reactions & heterologous_reactions) - seen)
     return exotic_cofactors

@@ -34,10 +34,11 @@ app = Flask(__name__)
 def init_app(application, database):
     """Initialize the main app with config information and routes."""
     from metabolic_ninja.settings import current_config
+
     application.config.from_object(current_config())
 
     # Configure logging
-    logging.config.dictConfig(application.config['LOGGING'])
+    logging.config.dictConfig(application.config["LOGGING"])
 
     # Configure the database connection.
     database.init_app(application)
@@ -47,14 +48,15 @@ def init_app(application, database):
     jwt.init_app(application)
 
     # Configure Sentry
-    if application.config['SENTRY_DSN']:
+    if application.config["SENTRY_DSN"]:
         sentry_sdk.init(
-            dsn=application.config['SENTRY_DSN'],
+            dsn=application.config["SENTRY_DSN"],
             integrations=[FlaskIntegration()],
         )
 
     # Add routes and resources.
     from metabolic_ninja import resources
+
     resources.init_app(application)
 
     # Add CORS information for all resources.
@@ -62,13 +64,14 @@ def init_app(application, database):
 
     # Add readiness check endpoint
     from . import healthz
+
     healthz.init_app(application)
 
     # Add an error handler for webargs parser error, ensuring a JSON response
     # including all error messages produced from the parser.
     @app.errorhandler(422)
     def handle_webargs_error(error):
-        response = jsonify(error.data['messages'])
+        response = jsonify(error.data["messages"])
         response.status_code = error.code
         return response
 

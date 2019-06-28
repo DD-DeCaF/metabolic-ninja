@@ -19,7 +19,8 @@
 import cobra
 import pytest
 from cameo.strain_design.pathway_prediction.pathway_predictor import (
-    PathwayResult)
+    PathwayResult,
+)
 
 import metabolic_ninja.helpers as helpers
 
@@ -30,9 +31,11 @@ pathway_registry = {}
 
 def register_with(registry):
     """Register a function."""
+
     def decorator(func):
         registry[func.__name__] = func
         return func
+
     return decorator
 
 
@@ -54,10 +57,7 @@ def bare_mini():
     met_b = cobra.Metabolite("b_c", name="B", formula="C2")
     model.add_metabolites([met_a, met_b])
     rxn = cobra.Reaction("FORMB")
-    rxn.add_metabolites({
-        met_a: -1,
-        met_b: 1
-    })
+    rxn.add_metabolites({met_a: -1, met_b: 1})
     model.add_reactions([rxn])
     model.add_boundary(met_a)
     demand = model.add_boundary(met_b, type="demand")
@@ -76,10 +76,7 @@ def mini_with_cofactors():
     met_d = cobra.Metabolite("d_c", name="D", formula="CO")
     model.add_metabolites([met_a, met_b])
     rxn = cobra.Reaction("FORMB")
-    rxn.add_metabolites({
-        met_a: -1,
-        met_b: 1
-    })
+    rxn.add_metabolites({met_a: -1, met_b: 1})
     model.add_reactions([rxn])
     model.add_boundary(met_a)
     model.add_boundary(met_c)
@@ -97,10 +94,7 @@ def straight_pathway():
     met_b_prime = cobra.Metabolite("b_p_c", name="B'", formula="C2")
     met_p_prime = cobra.Metabolite("p_p_c", name="P'", formula="C2")
     rxn = cobra.Reaction("FORMP")
-    rxn.add_metabolites({
-        met_b_prime: -1,
-        met_p_prime: 1
-    })
+    rxn.add_metabolites({met_b_prime: -1, met_p_prime: 1})
     # Single production step heterologous pathway.
     reactions = [rxn]
     # Define drains for all heterologous metabolites.
@@ -126,12 +120,9 @@ def straight_pathway_with_cofactors():
     met_d_prime = cobra.Metabolite("d_p_c", name="D'", formula="CO")
     met_p_prime = cobra.Metabolite("p_p_c", name="P'", formula="C2O")
     rxn = cobra.Reaction("FORMP")
-    rxn.add_metabolites({
-        met_b_prime: -1,
-        met_c_prime: -1,
-        met_d_prime: 1,
-        met_p_prime: 1
-    })
+    rxn.add_metabolites(
+        {met_b_prime: -1, met_c_prime: -1, met_d_prime: 1, met_p_prime: 1}
+    )
     # Single production step heterologous pathway.
     reactions = [rxn]
     # Define drains for all heterologous metabolites.
@@ -169,12 +160,9 @@ def straight_pathway_with_cofactors_and_adapters():
     met_d_prime = cobra.Metabolite("d_p_c", name="D'", formula="CO")
     met_p_prime = cobra.Metabolite("p_p_c", name="P'", formula="C2O")
     rxn = cobra.Reaction("FORMP")
-    rxn.add_metabolites({
-        met_b_prime: -1,
-        met_c_prime: -1,
-        met_d_prime: 1,
-        met_p_prime: 1
-    })
+    rxn.add_metabolites(
+        {met_b_prime: -1, met_c_prime: -1, met_d_prime: 1, met_p_prime: 1}
+    )
     # Single production step heterologous pathway.
     reactions = [rxn]
     # Define drains for all heterologous metabolites.
@@ -208,49 +196,63 @@ def straight_pathway_with_cofactors_and_adapters():
     return PathwayResult(reactions, exchanges, adapters, product)
 
 
-@pytest.mark.parametrize("formula, expected", [
-    ("CHO", {"C": 1, "H": 1, "O": 1}),
-    ("C2HO", {"C": 2, "H": 1, "O": 1}),
-    ("CH3O", {"C": 1, "H": 3, "O": 1}),
-    ("CHO4", {"C": 1, "H": 1, "O": 4}),
-    ("C12HO", {"C": 12, "H": 1, "O": 1}),
-    ("CoLi3Mn11", {"Co": 1, "Li": 3, "Mn": 11}),
-])
+@pytest.mark.parametrize(
+    "formula, expected",
+    [
+        ("CHO", {"C": 1, "H": 1, "O": 1}),
+        ("C2HO", {"C": 2, "H": 1, "O": 1}),
+        ("CH3O", {"C": 1, "H": 3, "O": 1}),
+        ("CHO4", {"C": 1, "H": 1, "O": 4}),
+        ("C12HO", {"C": 12, "H": 1, "O": 1}),
+        ("CoLi3Mn11", {"Co": 1, "Li": 3, "Mn": 11}),
+    ],
+)
 def test_count_atoms(formula, expected):
     assert helpers.count_atoms(formula) == expected
 
 
-@pytest.mark.parametrize("counts_a, counts_d, expected_scl", [
-    pytest.param({}, {}, None,
-                 marks=pytest.mark.raises(exception=ZeroDivisionError)),
-    ({}, {"C": 1}, 0.0),
-    ({"C": 1}, {}, 0.0),
-    ({"C": 1}, {"C": 1}, 1.0),
-    # Test that hydrogen does not influence the result.
-    ({"H": 1}, {"C": 1, "H": 1}, 0.0),
-    ({"C": 1, "H": 1}, {"H": 1}, 0.0),
-    ({"C": 1}, {"C": 2}, 0.5),
-    ({"C": 1}, {"C": 3}, 0.3),
-    ({"C": 2}, {"C": 2, "O": 1}, 2 / 3),
-    ({"O": 2}, {"C": 2, "O": 1}, 1 / 3),
-    ({"C": 1, "O": 1}, {"C": 2, "O": 1}, 2 / 3),
-])
+@pytest.mark.parametrize(
+    "counts_a, counts_d, expected_scl",
+    [
+        pytest.param(
+            {}, {}, None, marks=pytest.mark.raises(exception=ZeroDivisionError)
+        ),
+        ({}, {"C": 1}, 0.0),
+        ({"C": 1}, {}, 0.0),
+        ({"C": 1}, {"C": 1}, 1.0),
+        # Test that hydrogen does not influence the result.
+        ({"H": 1}, {"C": 1, "H": 1}, 0.0),
+        ({"C": 1, "H": 1}, {"H": 1}, 0.0),
+        ({"C": 1}, {"C": 2}, 0.5),
+        ({"C": 1}, {"C": 3}, 0.3),
+        ({"C": 2}, {"C": 2, "O": 1}, 2 / 3),
+        ({"O": 2}, {"C": 2, "O": 1}, 1 / 3),
+        ({"C": 1, "O": 1}, {"C": 2, "O": 1}, 2 / 3),
+    ],
+)
 def test_compute_chemical_linkage_strength(counts_a, counts_d, expected_scl):
     assert helpers.compute_chemical_linkage_strength(
-        counts_a, counts_d) == pytest.approx(expected_scl, rel=0.0, abs=0.1)
+        counts_a, counts_d
+    ) == pytest.approx(expected_scl, rel=0.0, abs=0.1)
 
 
-@pytest.mark.skip(reason="Evaluation of exotic cofactors is temporarily "
-                         "disabled")
-@pytest.mark.parametrize("model, pathway, exotic_cofactors", [
-    ("bare_mini", "straight_pathway", set()),
-    ("bare_mini", "straight_pathway_with_cofactors", {"c_p_c", "d_p_c"}),
-    (
-        "mini_with_cofactors",
-        "straight_pathway_with_cofactors_and_adapters",
-        set()
-    ),
-], indirect=["model", "pathway"])
+@pytest.mark.skip(
+    reason="Evaluation of exotic cofactors is temporarily " "disabled"
+)
+@pytest.mark.parametrize(
+    "model, pathway, exotic_cofactors",
+    [
+        ("bare_mini", "straight_pathway", set()),
+        ("bare_mini", "straight_pathway_with_cofactors", {"c_p_c", "d_p_c"}),
+        (
+            "mini_with_cofactors",
+            "straight_pathway_with_cofactors_and_adapters",
+            set(),
+        ),
+    ],
+    indirect=["model", "pathway"],
+)
 def test_identify_exotic_cofactors(model, pathway, exotic_cofactors):
-    assert {m.id for m in helpers.identify_exotic_cofactors(
-        pathway, model)} == exotic_cofactors
+    assert {
+        m.id for m in helpers.identify_exotic_cofactors(pathway, model)
+    } == exotic_cofactors
