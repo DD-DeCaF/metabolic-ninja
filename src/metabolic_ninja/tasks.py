@@ -254,7 +254,7 @@ def differential_fva_optimization(pathway, model):
             objective=pathway.product.id,
             variables=[model.biomass],
             normalize_ranges_by=model.biomass,
-            # Excluding the maxima, this corresponds to five evenly spaced
+            # Excluding the maxima, this corresponds to three evenly spaced
             # designs.
             points=5,
         )
@@ -274,7 +274,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
     if designs is None:
         return []
     logger.info(
-        f"Evaluating {len(designs) - 2} differential FVA surface points."
+        f"Evaluating {len(designs) - 1} differential FVA surface points."
     )
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
@@ -284,8 +284,12 @@ def evaluate_diff_fva(designs, pathway, model, method):
     designs = list(designs)
     with model:
         pathway.apply(model)
-        # Ignore zero production and zero growth points.
-        for design_result in designs[1 : len(designs) - 1]:
+        # The reference point is automatically ignored. Thus four of the
+        # original five points remain. The first point in order represents
+        # maximum production and zero growth. We ignore the point of lowest
+        # production (the last one in order).
+        for index in range(0, len(designs) - 1):
+            design_result = designs.nth_panel(index)
             with model:
                 design_result.apply(model)
                 try:
