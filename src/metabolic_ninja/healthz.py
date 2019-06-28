@@ -22,7 +22,8 @@ from .models import db
 
 def init_app(app):
     """Register the readiness check endpoint on the given app."""
-    @app.route('/healthz')
+
+    @app.route("/healthz")
     def healthz():
         """
         Run readiness checks.
@@ -32,7 +33,7 @@ def init_app(app):
         checks = []
 
         # Database ping
-        db.session.execute('select version()').fetchall()
-        checks.append({'name': "DB Connectivity", 'status': 'pass'})
+        db.session.execute("select version()").fetchall()
+        checks.append({"name": "DB Connectivity", "status": "pass"})
 
         return jsonify(checks)

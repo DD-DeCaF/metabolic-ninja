@@ -28,10 +28,12 @@ def tz_aware_now():
 
 class TimestampMixin:
 
-    created = db.Column(db.DateTime(timezone=True), nullable=False,
-                        default=tz_aware_now)
-    updated = db.Column(db.DateTime(timezone=True), nullable=True,
-                        onupdate=tz_aware_now)
+    created = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=tz_aware_now
+    )
+    updated = db.Column(
+        db.DateTime(timezone=True), nullable=True, onupdate=tz_aware_now
+    )
 
 
 class DesignJob(TimestampMixin, db.Model):
@@ -54,4 +56,4 @@ class DesignJob(TimestampMixin, db.Model):
         return f"<{self.__class__.__name__} {self.id}>"
 
     def is_complete(self):
-        return self.status in ('SUCCESS', 'FAILURE', 'REVOKED')
+        return self.status in ("SUCCESS", "FAILURE", "REVOKED")

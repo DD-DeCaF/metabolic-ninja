@@ -75,7 +75,8 @@ def session(reset_tables, connection):
     flask_sqlalchemy_session = db_.session
     transaction = connection.begin()
     db_.session = db_.create_scoped_session(
-        options={"bind": connection, "binds": {}})
+        options={"bind": connection, "binds": {}}
+    )
     yield db_.session
     db_.session.close()
     transaction.rollback()

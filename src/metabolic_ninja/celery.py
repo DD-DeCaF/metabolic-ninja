@@ -19,7 +19,7 @@ from celery import Celery
 
 
 celery_app = Celery(
-    'metabolic_ninja_worker',
+    "metabolic_ninja_worker",
     broker=f'redis://{os.environ["REDIS_HOST"]}/0',
     backend=f'redis://{os.environ["REDIS_HOST"]}/1',
 )
@@ -36,8 +36,8 @@ celery_app.conf.update(
     # Our tasks are expected to be mostly cpu bound, so the number of concurrent
     # processes is set to match the number of cores available in the deployment
     # configuration, currently 4 vCPUs.
-    worker_concurrency=int(os.environ['WORKER_CONCURRENCY']),
-    task_serializer='pickle',
-    result_serializer='pickle',
-    accept_content=['pickle']
+    worker_concurrency=int(os.environ["WORKER_CONCURRENCY"]),
+    task_serializer="pickle",
+    result_serializer="pickle",
+    accept_content=["pickle"],
 )

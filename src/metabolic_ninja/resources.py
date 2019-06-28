@@ -37,11 +37,19 @@ with open("data/products.json") as file_:
 
 
 class PredictionJobsResource(MethodResource):
-
     @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
-    def post(self, organism_id, model_id, project_id, product_name,
-             max_predictions, bigg, rhea, aerobic):
+    def post(
+        self,
+        organism_id,
+        model_id,
+        project_id,
+        product_name,
+        max_predictions,
+        bigg,
+        rhea,
+        aerobic,
+    ):
         """
         Create a design job.
 
@@ -61,55 +69,68 @@ class PredictionJobsResource(MethodResource):
         jwt_require_claim(project_id, "write")
         # Verify the request by loading the model from the model-storage
         # service.
-        headers = {
-            "Authorization": f"Bearer {g.jwt_token}",
-        }
+        headers = {"Authorization": f"Bearer {g.jwt_token}"}
         model = self.retrieve_model_json(model_id, headers)
         # Job accepted. Before submitting the job, create a corresponding empty
         # database entry.
-        job = DesignJob(project_id=project_id, organism_id=organism_id,
-                        model_id=model_id, product_name=product_name,
-                        max_predictions=max_predictions, status='PENDING')
+        job = DesignJob(
+            project_id=project_id,
+            organism_id=organism_id,
+            model_id=model_id,
+            product_name=product_name,
+            max_predictions=max_predictions,
+            status="PENDING",
+        )
         db.session.add(job)
         db.session.commit()
         # Fetch details about the user and organism name, to be used in the
         # notification email. This must be done here while the token is still
         # valid.
-        response = requests.get(f"{os.environ['IAM_API']}/user", headers={
-            'Authorization': f"Bearer {g.jwt_token}",
-        })
+        response = requests.get(
+            f"{os.environ['IAM_API']}/user",
+            headers={"Authorization": f"Bearer {g.jwt_token}"},
+        )
         response.raise_for_status()
         user = response.json()
         user_name = f"{user['first_name']} {user['last_name']}"
-        user_email = user['email']
+        user_email = user["email"]
         # Retrieve the organism name.
         response = requests.get(
             f"{os.environ['WAREHOUSE_API']}/organisms/{organism_id}",
-            headers={'Authorization': f"Bearer {g.jwt_token}"},
+            headers={"Authorization": f"Bearer {g.jwt_token}"},
         )
         response.raise_for_status()
-        organism_name = response.json()['name']
+        organism_name = response.json()["name"]
         # Submit a prediction to the celery queue.
-        result = predict.delay(model, product_name, max_predictions,
-                               aerobic, (bigg, rhea), job.id, organism_id,
-                               organism_name, user_name, user_email)
-        return {
-            'id': job.id,
-            'state': result.state,
-        }, 202
+        result = predict.delay(
+            model,
+            product_name,
+            max_predictions,
+            aerobic,
+            (bigg, rhea),
+            job.id,
+            organism_id,
+            organism_name,
+            user_name,
+            user_email,
+        )
+        return {"id": job.id, "state": result.state}, 202
 
     @staticmethod
     def retrieve_model_json(model_id, headers):
         response = requests.get(
             f'{app.config["MODEL_STORAGE_API"]}/models/{model_id}',
-            headers=headers)
+            headers=headers,
+        )
         if response.status_code == 401:
-            message = response.json().get('message', "No error message")
+            message = response.json().get("message", "No error message")
             raise Unauthorized(f"Invalid credentials ({message}).")
         elif response.status_code == 403:
-            message = response.json().get('message', "No error message")
-            raise Forbidden(f"Insufficient permissions to access model "
-                            f"{model_id} ({message}).")
+            message = response.json().get("message", "No error message")
+            raise Forbidden(
+                f"Insufficient permissions to access model "
+                f"{model_id} ({message})."
+            )
         elif response.status_code == 404:
             raise NotFound(f"No model with id {model_id}.")
         # In case any unexpected errors occurred this will trigger an
@@ -121,27 +142,29 @@ class PredictionJobsResource(MethodResource):
     def get(self):
         # Return a list of jobs that the user can see.
         return DesignJob.query.filter(
-            DesignJob.project_id.in_(g.jwt_claims['prj']) |
-            DesignJob.project_id.is_(None)
+            DesignJob.project_id.in_(g.jwt_claims["prj"])
+            | DesignJob.project_id.is_(None)
         ).all()
 
 
 class PredictionJobResource(MethodResource):
-
     @marshal_with(PredictionJobSchema())
     def get(self, job_id):
         job_id = int(job_id)
         try:
-            job = DesignJob.query.filter(
-                DesignJob.id == job_id,
-            ).filter(
-                DesignJob.project_id.in_(g.jwt_claims['prj']) |
-                DesignJob.project_id.is_(None)
-            ).one()
+            job = (
+                DesignJob.query.filter(DesignJob.id == job_id)
+                .filter(
+                    DesignJob.project_id.in_(g.jwt_claims["prj"])
+                    | DesignJob.project_id.is_(None)
+                )
+                .one()
+            )
         except NoResultFound:
-            return {
-                'error': f"Cannot find any design job with id {job_id}."
-            }, 404
+            return (
+                {"error": f"Cannot find any design job with id {job_id}."},
+                404,
+            )
         else:
             if job.is_complete():
                 status = 200
@@ -157,11 +180,12 @@ class ProductsResource(MethodResource):
 
 def init_app(app):
     """Register API resources on the provided Flask application."""
+
     def register(path, resource):
         app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
         docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
-    register('/predictions', PredictionJobsResource)
-    register('/predictions/<string:job_id>', PredictionJobResource)
-    register('/products', ProductsResource)
+    register("/predictions", PredictionJobsResource)
+    register("/predictions/<string:job_id>", PredictionJobResource)
+    register("/products", ProductsResource)

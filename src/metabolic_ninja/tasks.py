@@ -51,8 +51,7 @@ logger = get_task_logger(__name__)
 # Initialize Sentry. Adding the celery integration will automagically report
 # errors from all tasks.
 sentry_sdk.init(
-    dsn=os.environ.get('SENTRY_DSN'),
-    integrations=[CeleryIntegration()],
+    dsn=os.environ.get("SENTRY_DSN"), integrations=[CeleryIntegration()]
 )
 
 
@@ -60,8 +59,8 @@ sentry_sdk.init(
 def db_session():
     """Connect to the database and yield an SA session."""
     engine = create_engine(
-        'postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASS}@{POSTGRES_HOST}:'
-        '{POSTGRES_PORT}/{POSTGRES_DB_NAME}'.format(**os.environ)
+        "postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASS}@{POSTGRES_HOST}:"
+        "{POSTGRES_PORT}/{POSTGRES_DB_NAME}".format(**os.environ)
     )
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -79,9 +78,19 @@ def fail_workflow(request, exc, traceback, job_id):
 
 
 @celery_app.task(bind=True)
-def predict(self, model_obj, product_name, max_predictions, aerobic,
-            databases, job_id, organism_id, organism_name, user_name,
-            user_email):
+def predict(
+    self,
+    model_obj,
+    product_name,
+    max_predictions,
+    aerobic,
+    databases,
+    job_id,
+    organism_id,
+    organism_name,
+    user_name,
+    user_email,
+):
     """
     Define and start a design prediction workflow.
 
@@ -102,7 +111,7 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     # Update the job status.
     with db_session() as session:
         job = session.query(DesignJob).filter_by(id=job_id).one()
-        job.status = 'STARTED'
+        job.status = "STARTED"
         job.task_id = self.request.id
         session.add(job)
         session.commit()
@@ -129,13 +138,19 @@ def predict(self, model_obj, product_name, max_predictions, aerobic,
     model.carbon_source = "EX_glc__D_e"
     # Define the workflow.
     workflow = (
-        find_product.s(product_name, source) |
-        find_pathways.s(model, max_predictions, source) |
-        optimize.s(model) |
-        concatenate.s() |
-        persist.s(job_id) |
-        notify.si(job_id, product_name, organism_id, user_name, user_email,
-                  organism_name)
+        find_product.s(product_name, source)
+        | find_pathways.s(model, max_predictions, source)
+        | optimize.s(model)
+        | concatenate.s()
+        | persist.s(job_id)
+        | notify.si(
+            job_id,
+            product_name,
+            organism_id,
+            user_name,
+            user_email,
+            organism_name,
+        )
     ).on_error(fail_workflow.s(job_id))
     return self.replace(workflow)
 
@@ -156,7 +171,7 @@ def find_pathways(product, model, max_predictions, source):
         product,
         max_predictions=max_predictions,
         timeout=120,  # seconds
-        silent=True
+        silent=True,
     )
 
 
@@ -165,26 +180,31 @@ def find_pathways(product, model, max_predictions, source):
 #  review.
 @celery_app.task(bind=True)
 def optimize(self, pathways, model):
-    return self.replace(group(
+    return self.replace(
         group(
-            (
-                differential_fva_optimization.si(p, model) |
-                evaluate_diff_fva.s(p, model,
-                                    "PathwayPredictor+DifferentialFVA")
-                # | evaluate_exotic_cofactors.s(p, model)
-            ),
-            (
-                opt_gene.si(p, model) |
-                evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
-                # | evaluate_exotic_cofactors.s(p, model)
-            ),
-            (
-                cofactor_swap_optimization.si(p, model) |
-                evaluate_cofactor_swap.s(p, model,
-                                         "PathwayPredictor+CofactorSwap")
-                # | evaluate_exotic_cofactors.s(p, model)
+            group(
+                (
+                    differential_fva_optimization.si(p, model)
+                    | evaluate_diff_fva.s(
+                        p, model, "PathwayPredictor+DifferentialFVA"
+                    )
+                    # | evaluate_exotic_cofactors.s(p, model)
+                ),
+                (
+                    opt_gene.si(p, model)
+                    | evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
+                    # | evaluate_exotic_cofactors.s(p, model)
+                ),
+                (
+                    cofactor_swap_optimization.si(p, model)
+                    | evaluate_cofactor_swap.s(
+                        p, model, "PathwayPredictor+CofactorSwap"
+                    )
+                    # | evaluate_exotic_cofactors.s(p, model)
+                ),
             )
-        ) for p in pathways)
+            for p in pathways
+        )
     )
 
 
@@ -230,13 +250,14 @@ def differential_fva_optimization(pathway, model):
             variables=[model.biomass],
             # Excluding the maxima, this corresponds to five evenly spaced
             # designs.
-            points=5
+            points=5,
         )
         try:
             designs = predictor.run(progress=False)
         except ZeroDivisionError as error:
-            logger.warning("Encountered the following error in DiffFVA.",
-                           exc_info=error)
+            logger.warning(
+                "Encountered the following error in DiffFVA.", exc_info=error
+            )
             designs = None
     return designs
 
@@ -251,13 +272,14 @@ def evaluate_diff_fva(designs, pathway, model, method):
     )
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
-        model.biomass, pathway.product, model.carbon_source)
+        model.biomass, pathway.product, model.carbon_source
+    )
     results = []
     designs = list(designs)
     with model:
         pathway.apply(model)
         # Ignore zero production and zero growth points.
-        for design_result in designs[1: len(designs) - 1]:
+        for design_result in designs[1 : len(designs) - 1]:
             with model:
                 design_result.apply(model)
                 try:
@@ -281,30 +303,35 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         target_flux = None
                     if isnan(biomass):
                         biomass = None
-                knockouts = {r for r in design_result.targets
-                             if isinstance(r, targets.ReactionKnockoutTarget)}
+                knockouts = {
+                    r
+                    for r in design_result.targets
+                    if isinstance(r, targets.ReactionKnockoutTarget)
+                }
                 manipulations = set(design_result.targets).difference(knockouts)
-                results.append({
-                    "knockouts": list(knockouts),
-                    "manipulations": [
-                        manipulation_helper(t) for t in manipulations],
-                    "heterologous_reactions": pathway.reactions,
-                    "synthetic_reactions": find_synthetic_reactions(pathway),
-                    "fitness": bpc_yield,
-                    "yield": p_yield,
-                    "product": target_flux,
-                    "biomass": biomass,
-                    "method": method
-                })
+                results.append(
+                    {
+                        "knockouts": list(knockouts),
+                        "manipulations": [
+                            manipulation_helper(t) for t in manipulations
+                        ],
+                        "heterologous_reactions": pathway.reactions,
+                        "synthetic_reactions": find_synthetic_reactions(
+                            pathway
+                        ),
+                        "fitness": bpc_yield,
+                        "yield": p_yield,
+                        "product": target_flux,
+                        "biomass": biomass,
+                        "method": method,
+                    }
+                )
     return results
 
 
 def manipulation_helper(target):
     """Convert a FluxModulationTarget to a dictionary."""
-    result = {
-        "id": target.id,
-        "value": target.fold_change
-    }
+    result = {"id": target.id, "value": target.fold_change}
     if target.fold_change > 0.0:
         result["direction"] = "up"
     elif target.fold_change < 0.0:
@@ -312,7 +339,8 @@ def manipulation_helper(target):
     else:
         raise ValueError(
             f"Expected a non-zero fold-change for a flux modulation target "
-            f"({target.id}).")
+            f"({target.id})."
+        )
     return result
 
 
@@ -324,8 +352,7 @@ def cofactor_swap_optimization(pathway, model):
         # TODO (Moritz Beber): By default swaps NADH with NADPH using BiGG
         #  notation.
         predictor = CofactorSwapOptimization(
-            model=model,
-            objective_function=pyield
+            model=model, objective_function=pyield
         )
         designs = predictor.run(max_size=5)
     return designs
@@ -338,17 +365,21 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
     logger.info(f"Evaluating {len(designs)} co-factor swap designs.")
     results = []
     for row in designs.data_frame.itertuples(index=False):
-        results.append({
-            "manipulations": [{"id": r, "from": "NADH", "to": "NADPH"}
-                              for r in row.targets],
-            "heterologous_reactions": pathway.reactions,
-            "synthetic_reactions": find_synthetic_reactions(pathway),
-            "fitness": None,
-            "yield": None if isnan(row.fitness) else row.fitness,
-            "product": None,
-            "biomass": None,
-            "method": method
-        })
+        results.append(
+            {
+                "manipulations": [
+                    {"id": r, "from": "NADH", "to": "NADPH"}
+                    for r in row.targets
+                ],
+                "heterologous_reactions": pathway.reactions,
+                "synthetic_reactions": find_synthetic_reactions(pathway),
+                "fitness": None,
+                "yield": None if isnan(row.fitness) else row.fitness,
+                "product": None,
+                "biomass": None,
+                "method": method,
+            }
+        )
     return results
 
 
@@ -356,17 +387,14 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
 def opt_gene(pathway, model):
     with model:
         pathway.apply(model)
-        predictor = OptGene(
-            model=model,
-            plot=False
-        )
+        predictor = OptGene(model=model, plot=False)
         designs = predictor.run(
             target=pathway.product.id,
             biomass=model.biomass,
             substrate=model.carbon_source,
-            max_evaluations=int(1E06),
+            max_evaluations=int(1e06),
             max_knockouts=5,
-            max_time=(2, 0, 0)  # (hours, minutes, seconds)
+            max_time=(2, 0, 0),  # (hours, minutes, seconds)
         )
     return designs
 
@@ -378,7 +406,8 @@ def evaluate_opt_gene(designs, pathway, model, method):
     logger.info(f"Evaluating {len(designs)} OptGene designs.")
     pyield = product_yield(pathway.product, model.carbon_source)
     bpcy = biomass_product_coupled_min_yield(
-        model.biomass, pathway.product, model.carbon_source)
+        model.biomass, pathway.product, model.carbon_source
+    )
     results = []
     with model:
         pathway.apply(model)
@@ -406,18 +435,25 @@ def evaluate_opt_gene(designs, pathway, model, method):
                         target_flux = None
                     if isnan(biomass):
                         biomass = None
-                knockouts = {g for g in design_result.targets
-                             if isinstance(g, targets.GeneKnockoutTarget)}
-                results.append({
-                    "knockouts": list(knockouts),
-                    "heterologous_reactions": pathway.reactions,
-                    "synthetic_reactions": find_synthetic_reactions(pathway),
-                    "fitness": bpc_yield,
-                    "yield": p_yield,
-                    "product": target_flux,
-                    "biomass": biomass,
-                    "method": method
-                })
+                knockouts = {
+                    g
+                    for g in design_result.targets
+                    if isinstance(g, targets.GeneKnockoutTarget)
+                }
+                results.append(
+                    {
+                        "knockouts": list(knockouts),
+                        "heterologous_reactions": pathway.reactions,
+                        "synthetic_reactions": find_synthetic_reactions(
+                            pathway
+                        ),
+                        "fitness": bpc_yield,
+                        "yield": p_yield,
+                        "product": target_flux,
+                        "biomass": biomass,
+                        "method": method,
+                    }
+                )
     return results
 
 
@@ -462,29 +498,42 @@ def concatenate(results):
     opt_gene = []
     # Flatten lists and convert design and pathway to dictionary.
     for row in iter_chain.from_iterable(results):
-        reactions.update(**{
-            r.id: reaction_to_dict(r) for r in row.get(
-                "heterologous_reactions", [])
-        })
-        reactions.update(**{
-            r.id: reaction_to_dict(r) for r in row.get(
-                "synthetic_reactions", [])
-        })
-        metabolites.update(**{
-            m.id: metabolite_to_dict(m) for m in row.get("exotic_cofactors", [])
-        })
-        metabolites.update(**{
-            m.id: metabolite_to_dict(m) for r in row.get(
-                "heterologous_reactions", []) for m in r.metabolites
-        })
+        reactions.update(
+            **{
+                r.id: reaction_to_dict(r)
+                for r in row.get("heterologous_reactions", [])
+            }
+        )
+        reactions.update(
+            **{
+                r.id: reaction_to_dict(r)
+                for r in row.get("synthetic_reactions", [])
+            }
+        )
+        metabolites.update(
+            **{
+                m.id: metabolite_to_dict(m)
+                for m in row.get("exotic_cofactors", [])
+            }
+        )
+        metabolites.update(
+            **{
+                m.id: metabolite_to_dict(m)
+                for r in row.get("heterologous_reactions", [])
+                for m in r.metabolites
+            }
+        )
         row["knockouts"] = [t.id for t in row.get("knockouts", [])]
         row["manipulations"] = row.get("manipulations", [])
         row["heterologous_reactions"] = [
-            r.id for r in row.get("heterologous_reactions", [])]
+            r.id for r in row.get("heterologous_reactions", [])
+        ]
         row["synthetic_reactions"] = [
-            r.id for r in row.get("synthetic_reactions", [])]
+            r.id for r in row.get("synthetic_reactions", [])
+        ]
         row["exotic_cofactors"] = [
-            m.id for m in row.get("exotic_cofactors", [])]
+            m.id for m in row.get("exotic_cofactors", [])
+        ]
         method = row.get("method")
         if method == "PathwayPredictor+DifferentialFVA":
             diff_fva.append(row)
@@ -499,7 +548,7 @@ def concatenate(results):
         "cofactor_swap": cofactor_swap,
         "opt_gene": opt_gene,
         "reactions": reactions,
-        "metabolites": metabolites
+        "metabolites": metabolites,
     }
 
 
@@ -515,8 +564,9 @@ def persist(result, job_id):
 
 
 @celery_app.task()
-def notify(job_id, product_name, organism_id, user_name, user_email,
-           organism_name):
+def notify(
+    job_id, product_name, organism_id, user_name, user_email, organism_name
+):
     try:
         sendgrid = SendGridAPIClient()
         mail = Mail()
@@ -525,10 +575,10 @@ def notify(job_id, product_name, organism_id, user_name, user_email,
         personalization = Personalization()
         personalization.add_to(Email(user_email))
         personalization.dynamic_template_data = {
-            'name': user_name,
-            'product': product_name,
-            'organism': organism_name,
-            'results_url': f"https://caffeine.dd-decaf.eu/jobs/{job_id}",
+            "name": user_name,
+            "product": product_name,
+            "organism": organism_name,
+            "results_url": f"https://caffeine.dd-decaf.eu/jobs/{job_id}",
         }
         mail.add_personalization(personalization)
         sendgrid.client.mail.send.post(request_body=mail.get())

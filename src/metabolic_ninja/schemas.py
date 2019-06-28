@@ -39,7 +39,6 @@ class PredictionJobRequestSchema(StrictSchema):
 
 
 class PredictionJobSchema(StrictSchema):
-
     class Meta:
         dateformat = "iso"
 
