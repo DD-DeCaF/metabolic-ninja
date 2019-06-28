@@ -19,6 +19,6 @@ flask-sqlalchemy
 psycopg2-binary
 sqlalchemy
 Alembic
-cameo >= 0.11.13
+cameo >= 0.11.14
 cobra >= 0.15.3
 sendgrid
