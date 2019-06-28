@@ -43,6 +43,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .celery import celery_app
+from .evaluate import evaluate_production, evaluate_biomass_coupled_production
 from .helpers import identify_exotic_cofactors
 from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
@@ -276,10 +277,6 @@ def evaluate_diff_fva(designs, pathway, model, method):
     logger.info(
         f"Evaluating {len(designs) - 1} differential FVA surface points."
     )
-    pyield = product_yield(pathway.product, model.carbon_source)
-    bpcy = biomass_product_coupled_min_yield(
-        model.biomass, pathway.product, model.carbon_source
-    )
     results = []
     designs = list(designs)
     with model:
@@ -292,27 +289,10 @@ def evaluate_diff_fva(designs, pathway, model, method):
             design_result = designs.nth_panel(index)
             with model:
                 design_result.apply(model)
-                try:
-                    model.objective = model.biomass
-                    solution = model.optimize()
-                    p_yield = pyield(model, solution, pathway.product)
-                    bpc_yield = bpcy(model, solution, pathway.product)
-                    target_flux = solution[pathway.product.id]
-                    biomass = solution[model.biomass]
-                except (OptimizationError, ZeroDivisionError):
-                    p_yield = None
-                    bpc_yield = None
-                    target_flux = None
-                    biomass = None
-                else:
-                    if isnan(p_yield):
-                        p_yield = None
-                    if isnan(bpc_yield):
-                        bpc_yield = None
-                    if isnan(target_flux):
-                        target_flux = None
-                    if isnan(biomass):
-                        biomass = None
+                with model:
+                    production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
+                with model:
+                    growth, bpcy, _ = evaluate_biomass_coupled_production(model, pathway.product.id, model.carbon_source)
                 knockouts = {
                     r
                     for r in design_result.targets
@@ -329,10 +309,10 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         "synthetic_reactions": find_synthetic_reactions(
                             pathway
                         ),
-                        "fitness": bpc_yield,
-                        "yield": p_yield,
-                        "product": target_flux,
-                        "biomass": biomass,
+                        "fitness": bpcy,
+                        "yield": carbon_yield,
+                        "product": production,
+                        "biomass": growth,
                         "method": method,
                     }
                 )
