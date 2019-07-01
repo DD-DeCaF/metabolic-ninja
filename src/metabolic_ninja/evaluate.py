@@ -80,11 +80,11 @@ def evaluate_production(
     # Compute the number of weighted carbon atoms.
     carbon_uptake = model.reactions.get_by_id(carbon_source_id)
     production = model.reactions.get_by_id(production_id)
-    input_components = [reaction_elements(rxn) for rxn in carbon_uptake]
+    input_components = [reaction_elements(carbon_uptake)]
     output_components = reaction_elements(production)
     # Compute the masses.
     try:
-        input_weights = [reaction_weight(rxn) for rxn in carbon_uptake]
+        input_weights = [reaction_weight(carbon_uptake)]
         output_weight = reaction_weight(production)
     # If the reactions are ill-defined or the metabolite weight is unknown.
     except (ValueError, TypeError):
