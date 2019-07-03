@@ -33,6 +33,7 @@ from cameo.strain_design.heuristic.evolutionary_based import (
 from cameo.strain_design.pathway_prediction import PathwayPredictor
 from celery import group
 from celery.utils.log import get_task_logger
+from cobra import Reaction
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
@@ -344,15 +345,22 @@ def manipulation_helper(target):
 
 @celery_app.task()
 def cofactor_swap_optimization(pathway, model):
-    pyield = product_yield(pathway.product, model.carbon_source)
     with model:
-        pathway.apply(model)
+        model.objective = model.biomass
+        growth = model.slim_optimize()
+    model.reactions.get_by_id(model.biomass).lower_bound = 0.05 * growth
+    pathway.apply(model)
+    model.objective = pathway.product.id
+    pyield = product_yield(pathway.product.id, model.carbon_source)
+    with model:
         # TODO (Moritz Beber): By default swaps NADH with NADPH using BiGG
         #  notation.
         predictor = CofactorSwapOptimization(
-            model=model, objective_function=pyield
+            model=model,
+            objective_function=pyield,
+            plot=False
         )
-        designs = predictor.run(max_size=5)
+        designs = predictor.run(max_size=5, diversify=True)
     return designs
 
 
@@ -361,23 +369,59 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
     if designs is None:
         return []
     logger.info(f"Evaluating {len(designs)} co-factor swap designs.")
+    source_pair = ("nad_c", "nadh_c")
+    target_pair = ("nadp_c", "nadph_c")
     results = []
-    for row in designs.data_frame.itertuples(index=False):
-        results.append(
-            {
-                "manipulations": [
-                    {"id": r, "from": "NADH", "to": "NADPH"}
-                    for r in row.targets
-                ],
-                "heterologous_reactions": pathway.reactions,
-                "synthetic_reactions": find_synthetic_reactions(pathway),
-                "fitness": None,
-                "yield": None if isnan(row.fitness) else row.fitness,
-                "product": None,
-                "biomass": None,
-                "method": method,
-            }
-        )
+    for design in designs.data_frame.itertuples(index=False):
+        manipulations = []
+        # FIXME (Moritz Beber): The model context is currently bugged.
+        #  See https://github.com/opencobra/cobrapy/issues/849
+        #  We need to make a copy.
+        model_tmp = model.copy()
+        source_a = model_tmp.metabolites.get_by_id(source_pair[0])
+        source_b = model_tmp.metabolites.get_by_id(source_pair[1])
+        target_a = model_tmp.metabolites.get_by_id(target_pair[0])
+        target_b = model_tmp.metabolites.get_by_id(target_pair[1])
+        for rxn_id in design.targets:
+            rxn: Reaction = model_tmp.reactions.get_by_id(rxn_id)
+            metabolites = rxn.metabolites
+            # Swap from source to target co-factors.
+            if source_a in metabolites:
+                metabolites[target_a] = metabolites[source_a]
+                metabolites[target_b] = metabolites[source_b]
+                metabolites[source_a] = 0
+                metabolites[source_b] = 0
+                manipulations.append({"id": rxn_id, "from": source_pair, "to": target_pair})
+            elif target_a in metabolites:
+                metabolites[source_a] = metabolites[target_a]
+                metabolites[source_b] = metabolites[target_b]
+                metabolites[target_a] = 0
+                metabolites[target_b] = 0
+                manipulations.append({"id": rxn_id, "from": target_pair, "to": source_pair})
+            else:
+                raise KeyError(
+                    f"Neither co-factor swap partner present in "
+                    f"predicted target reaction '{rxn_id}'."
+                )
+            rxn.add_metabolites(metabolites, combine=False)
+        logger.info("Calculating production values.")
+        with model_tmp:
+            prod_flux, _, prod_carbon_yield, _ = evaluate_production(model_tmp, pathway.product.id, model_tmp.carbon_source)
+        logger.info("Calculating biomass coupled production values.")
+        with model_tmp:
+            growth, bpc_yield, _ = evaluate_biomass_coupled_production(
+                model_tmp, pathway.product.id, model_tmp.biomass, model_tmp.carbon_source
+            )
+        results.append({
+            "manipulations": manipulations,
+            "heterologous_reactions": pathway.reactions,
+            "synthetic_reactions": find_synthetic_reactions(pathway),
+            "fitness": bpc_yield,
+            "yield": prod_carbon_yield,
+            "product": prod_flux,
+            "biomass": growth,
+            "method": method
+        })
     return results
 
 
