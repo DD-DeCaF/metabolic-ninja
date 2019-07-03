@@ -204,14 +204,13 @@ def optimize(self, pathways, model):
                 #     | evaluate_opt_gene.s(p, model, "PathwayPredictor+OptGene")
                 #     # | evaluate_exotic_cofactors.s(p, model)
                 # ),
-                # FIXME (Moritz): Disabled for fast test on staging.
-                # (
-                #     cofactor_swap_optimization.si(p, model)
-                #     | evaluate_cofactor_swap.s(
-                #         p, model, "PathwayPredictor+CofactorSwap"
-                #     )
-                #     # | evaluate_exotic_cofactors.s(p, model)
-                # ),
+                (
+                    cofactor_swap_optimization.si(p, model)
+                    | evaluate_cofactor_swap.s(
+                        p, model, "PathwayPredictor+CofactorSwap"
+                    )
+                    # | evaluate_exotic_cofactors.s(p, model)
+                ),
             )
             for p in pathways
         )
