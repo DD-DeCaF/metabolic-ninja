@@ -31,10 +31,10 @@ from cameo.strain_design.heuristic.evolutionary_based import (
 from cameo.strain_design.pathway_prediction import PathwayPredictor
 from celery import group
 from celery.utils.log import get_task_logger
+from cobra import Reaction
 from cobra.exceptions import OptimizationError
 from cobra.io import model_from_dict
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
-from cobra import Reaction
 from numpy import isnan
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Email, Mail, Personalization
@@ -43,10 +43,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .celery import celery_app
+from .evaluate import evaluate_biomass_coupled_production, evaluate_production
 from .helpers import identify_exotic_cofactors
 from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
-from .evaluate import evaluate_biomass_coupled_production, evaluate_production
 
 
 logger = get_task_logger(__name__)
