@@ -191,13 +191,13 @@ def optimize(self, pathways, model):
     return self.replace(
         group(
             group(
-                # (
-                #     differential_fva_optimization.si(p, model)
-                #     | evaluate_diff_fva.s(
-                #         p, model, "PathwayPredictor+DifferentialFVA"
-                #     )
-                #     # | evaluate_exotic_cofactors.s(p, model)
-                # ),
+                (
+                    differential_fva_optimization.si(p, model)
+                    | evaluate_diff_fva.s(
+                        p, model, "PathwayPredictor+DifferentialFVA"
+                    )
+                    # | evaluate_exotic_cofactors.s(p, model)
+                ),
                 # FIXME (Moritz): Disabled for fast test on staging.
                 # (
                 #     opt_gene.si(p, model)
