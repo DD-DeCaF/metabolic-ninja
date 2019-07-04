@@ -288,15 +288,15 @@ def evaluate_diff_fva(designs, pathway, model, method):
         # original five points remain. The first point in order represents
         # maximum production and zero growth. We ignore the point of lowest
         # production (the last one in order).
-        # for index in range(0, len(designs) - 1):
-            # design_result = designs.nth_panel(index)
-            # with model:
-            #     design_result.apply(model)
-            #     with model:
-            #         production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
-            #     with model:
-            #         growth, bpcy, _ = evaluate_biomass_coupled_production(model, pathway.product.id, model.carbon_source)
         for design_result in designs[:-1]:
+            with model:
+                design_result.apply(model)
+                with model:
+                    production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
+                with model:
+                    growth, bpcy, _ = evaluate_biomass_coupled_production(
+                        model, pathway.product.id,
+                        model.biomass, model.carbon_source)
             knockouts = {
                 r
                 for r in design_result.targets
@@ -313,14 +313,10 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     "synthetic_reactions": find_synthetic_reactions(
                         pathway
                     ),
-                    # "fitness": bpcy,
-                    "fitness": None,
-                    # "yield": carbon_yield,
-                    "yield": None,
-                    # "product": production,
-                    "product": None,
-                    # "biomass": growth,
-                    "biomass": None,
+                    "fitness": bpcy,
+                    "yield": carbon_yield,
+                    "product": production,
+                    "biomass": growth,
                     "method": method,
                 }
             )
