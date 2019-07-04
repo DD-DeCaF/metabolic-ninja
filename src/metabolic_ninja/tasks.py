@@ -292,11 +292,16 @@ def evaluate_diff_fva(designs, pathway, model, method):
             with model:
                 design_result.apply(model)
                 with model:
-                    production, _, carbon_yield, _ = evaluate_production(model, pathway.product.id, model.carbon_source)
+                    production, _, carbon_yield, _ = evaluate_production(
+                        model, pathway.product.id, model.carbon_source
+                    )
                 with model:
                     growth, bpcy, _ = evaluate_biomass_coupled_production(
-                        model, pathway.product.id,
-                        model.biomass, model.carbon_source)
+                        model,
+                        pathway.product.id,
+                        model.biomass,
+                        model.carbon_source,
+                    )
             knockouts = {
                 r
                 for r in design_result.targets
@@ -310,9 +315,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         manipulation_helper(t) for t in manipulations
                     ],
                     "heterologous_reactions": pathway.reactions,
-                    "synthetic_reactions": find_synthetic_reactions(
-                        pathway
-                    ),
+                    "synthetic_reactions": find_synthetic_reactions(pathway),
                     "fitness": bpcy,
                     "yield": carbon_yield,
                     "product": production,
@@ -351,9 +354,7 @@ def cofactor_swap_optimization(pathway, model):
         # TODO (Moritz Beber): By default swaps NADH with NADPH using BiGG
         #  notation.
         predictor = CofactorSwapOptimization(
-            model=model,
-            objective_function=pyield,
-            plot=False
+            model=model, objective_function=pyield, plot=False
         )
         designs = predictor.run(max_size=5, diversify=True)
     return designs
@@ -386,13 +387,17 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
                 metabolites[target_b] = metabolites[source_b]
                 metabolites[source_a] = 0
                 metabolites[source_b] = 0
-                manipulations.append({"id": rxn_id, "from": source_pair, "to": target_pair})
+                manipulations.append(
+                    {"id": rxn_id, "from": source_pair, "to": target_pair}
+                )
             elif target_a in metabolites:
                 metabolites[source_a] = metabolites[target_a]
                 metabolites[source_b] = metabolites[target_b]
                 metabolites[target_a] = 0
                 metabolites[target_b] = 0
-                manipulations.append({"id": rxn_id, "from": target_pair, "to": source_pair})
+                manipulations.append(
+                    {"id": rxn_id, "from": target_pair, "to": source_pair}
+                )
             else:
                 raise KeyError(
                     f"Neither co-factor swap partner present in "
@@ -401,22 +406,29 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             rxn.add_metabolites(metabolites, combine=False)
         logger.info("Calculating production values.")
         with model_tmp:
-            prod_flux, _, prod_carbon_yield, _ = evaluate_production(model_tmp, pathway.product.id, model_tmp.carbon_source)
+            prod_flux, _, prod_carbon_yield, _ = evaluate_production(
+                model_tmp, pathway.product.id, model_tmp.carbon_source
+            )
         logger.info("Calculating biomass coupled production values.")
         with model_tmp:
             growth, bpc_yield, _ = evaluate_biomass_coupled_production(
-                model_tmp, pathway.product.id, model_tmp.biomass, model_tmp.carbon_source
+                model_tmp,
+                pathway.product.id,
+                model_tmp.biomass,
+                model_tmp.carbon_source,
             )
-        results.append({
-            "manipulations": manipulations,
-            "heterologous_reactions": pathway.reactions,
-            "synthetic_reactions": find_synthetic_reactions(pathway),
-            "fitness": bpc_yield,
-            "yield": prod_carbon_yield,
-            "product": prod_flux,
-            "biomass": growth,
-            "method": method
-        })
+        results.append(
+            {
+                "manipulations": manipulations,
+                "heterologous_reactions": pathway.reactions,
+                "synthetic_reactions": find_synthetic_reactions(pathway),
+                "fitness": bpc_yield,
+                "yield": prod_carbon_yield,
+                "product": prod_flux,
+                "biomass": growth,
+                "method": method,
+            }
+        )
     return results
 
 
