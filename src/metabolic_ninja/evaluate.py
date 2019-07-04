@@ -27,6 +27,7 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     product_yield,
 )
 from cobra.exceptions import OptimizationError
+from cobra.flux_analysis import pfba
 from cobra.flux_analysis.phenotype_phase_plane import (
     reaction_elements,
     reaction_weight,
@@ -180,7 +181,7 @@ def evaluate_biomass_coupled_production(
     )
     try:
         model.objective = biomass_id
-        solution = model.optimize()
+        solution = pfba(model)
         growth = solution[biomass_id]
     except OptimizationError as error:
         logger.error(
