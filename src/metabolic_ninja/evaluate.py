@@ -22,7 +22,6 @@ from typing import Optional, Tuple
 
 import cobra
 from cameo.strain_design.heuristic.evolutionary.objective_functions import (
-    biomass_product_coupled_min_yield,
     biomass_product_coupled_yield,
     product_yield,
 )
@@ -139,7 +138,7 @@ def evaluate_biomass_coupled_production(
     production_id: str,
     biomass_id: str,
     carbon_source_id: str,
-) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+) -> Tuple[Optional[float], Optional[float]]:
     """
     Evaluate the biomass coupled production levels in the specific conditions.
 
@@ -169,14 +168,9 @@ def evaluate_biomass_coupled_production(
             The theoretical maximum growth rate if any.
         float or None
             The maximum biomass coupled product yield if any.
-        float or None
-            The maximal biomass coupled minimal product yield if any.
 
     """
     bpcy = biomass_product_coupled_yield(
-        biomass_id, production_id, carbon_source_id
-    )
-    bpcmy = biomass_product_coupled_min_yield(
         biomass_id, production_id, carbon_source_id
     )
     try:
@@ -191,13 +185,10 @@ def evaluate_biomass_coupled_production(
         )
         growth = None
         bpc_yield = None
-        bpcm_yield = None
     else:
         try:
             bpc_yield = bpcy(model, solution, None)
-            bpcm_yield = bpcmy(model, solution, None)
         except ZeroDivisionError:
             logger.error("Division by zero in yield calculation.")
             bpc_yield = None
-            bpcm_yield = None
-    return growth, bpc_yield, bpcm_yield
+    return growth, bpc_yield
