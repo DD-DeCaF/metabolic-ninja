@@ -79,6 +79,7 @@ class PredictionJobsResource(MethodResource):
             model_id=model_id,
             product_name=product_name,
             max_predictions=max_predictions,
+            aerobic=aerobic,
             status="PENDING",
         )
         db.session.add(job)
