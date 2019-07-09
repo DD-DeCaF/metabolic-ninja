@@ -44,6 +44,9 @@ class DesignJob(TimestampMixin, db.Model):
     model_id = db.Column(db.Integer, nullable=False)
     product_name = db.Column(db.String, nullable=False)
     max_predictions = db.Column(db.Integer, nullable=False)
+    # Null is allowed to be compatible with the older jobs
+    # created before the field existed
+    aerobic = db.Column(db.Boolean, nullable=True)
     # The UUID assigned by celery.
     task_id = db.Column(db.String(36), nullable=True)
     # The status refers to
