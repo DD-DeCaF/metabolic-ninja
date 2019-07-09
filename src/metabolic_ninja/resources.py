@@ -139,7 +139,7 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         return response.json()
 
-    @marshal_with(PredictionJobSchema(many=True, exclude=("result",)))
+    @marshal_with(PredictionJobSchema(many=True, exclude=("result",)), 200)
     def get(self):
         # Return a list of jobs that the user can see.
         return DesignJob.query.filter(
@@ -149,7 +149,8 @@ class PredictionJobsResource(MethodResource):
 
 
 class PredictionJobResource(MethodResource):
-    @marshal_with(PredictionJobSchema())
+    @marshal_with(PredictionJobSchema(), 200)
+    @marshal_with(PredictionJobSchema(), 202)
     def get(self, job_id):
         job_id = int(job_id)
         try:
