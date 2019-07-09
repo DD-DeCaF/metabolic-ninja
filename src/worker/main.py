@@ -16,9 +16,12 @@
 import functools
 import logging
 import logging.config
+import json
 import pika
 import os
 import signal
+
+from . import tasks
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,7 @@ logging.config.dictConfig(
 
 def on_message(channel, method, properties, body):
     logger.debug(f"Received message of size {len(body)}")
+    tasks.design(**json.loads(body))
     channel.basic_ack(delivery_tag=method.delivery_tag)
 
 
