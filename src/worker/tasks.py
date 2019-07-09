@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cameo.api
 import logging
 
 from .decorators import fork
+from .universal import UNIVERSAL_SOURCES
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,9 @@ logger = logging.getLogger(__name__)
 def design(job):
     """Run the metabolic ninja design workflow."""
     try:
-        find_product(product_name)
+        logger.debug(f"Initiating new design workflow")
+        source = UNIVERSAL_SOURCES[(job.bigg, job.rhea)]
+        product = find_product(job.product_name, source)
         # find_pathways()
         # optimize(model)
         # concatenate()
@@ -37,6 +41,12 @@ def design(job):
 
 
 @fork
-def find_product(product_name):
+def find_product(product_name, source):
+    # Find the product name via the cameo designer. In a future far, far away
+    # this should be a call to a web service.
+    logger.debug("Task starting: Find product")
     # TODO: update db state
-    pass
+    return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(
+        product_name, source
+    )
+    logger.debug("Task finished: Find product")
