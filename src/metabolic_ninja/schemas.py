@@ -40,7 +40,7 @@ class PredictionJobRequestSchema(StrictSchema):
 
 class PredictionJobSchema(StrictSchema):
     class Meta:
-        dateformat = "iso"
+        datetimeformat = "iso"
 
     id = fields.Integer(required=True)
     project_id = fields.Integer(required=True, allow_none=True)
