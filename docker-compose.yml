@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
-    - redis
+    - rabbitmq
     - postgres
     networks:
       default:
@@ -23,7 +23,7 @@ services:
     - SCRIPT_NAME=${SCRIPT_NAME}
     - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
     - SENTRY_DSN=${SENTRY_DSN}
-    - REDIS_HOST=${REDIS_HOST:-redis:6379}
+    - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
     - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/mstorage}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -32,13 +32,12 @@ services:
     - POSTGRES_PASS=${POSTGRES_PASS}
     - IAM_API=${IAM_API:-https://api-staging.dd-decaf.eu/iam}
     - WAREHOUSE_API=${WAREHOUSE_API:-https://api-staging.dd-decaf.eu/warehouse}
-    - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
     command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
     image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
     depends_on:
-    - redis
+    - rabbitmq
     networks:
       default:
       DD-DeCaF:
@@ -48,7 +47,7 @@ services:
     - ".:/app"
     environment:
     - SENTRY_DSN=${SENTRY_DSN}
-    - REDIS_HOST=${REDIS_HOST:-redis:6379}
+    - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
@@ -59,28 +58,12 @@ services:
     - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
     command: celery -A metabolic_ninja.tasks worker --loglevel=info
 
-  flower:
-    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
-    depends_on:
-    - redis
-    networks:
-      default:
+  rabbitmq:
+    image: rabbitmq:3.7
     ports:
-    - "${FLOWER_PORT:-5555}:5555"
-    volumes:
-    - ".:/app"
-    environment:
-    - REDIS_HOST=${REDIS_HOST:-redis:6379}
-    - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-1}
-    command: celery flower -A metabolic_ninja --broker=redis://redis:6379/0
-
-  redis:
-    image: redis
+    - "${RABBITMQ_PORT:-6379}:6379"
     networks:
     - default
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    command: redis-server --appendonly yes
 
   postgres:
     image: postgres:9.6-alpine
