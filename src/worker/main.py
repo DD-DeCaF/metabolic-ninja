@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 import logging.config
 import pika
 import os
+import signal
 
 
 logger = logging.getLogger(__name__)
@@ -55,17 +57,25 @@ def on_message(channel, method, properties, body):
     channel.basic_ack(delivery_tag=method.delivery_tag)
 
 
+def on_terminate(channel, signum, frame):
+    logger.debug(f"Caught SIGTERM, cancelling consumption")
+    channel.stop_consuming()
+
+
 def main():
     logger.debug("Establishing connection and declaring task queue")
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
     )
     channel = connection.channel()
-    channel.queue_declare(queue="task_queue", durable=True)
+    channel.queue_declare(queue="jobs", durable=True)
     # Prefetch only a single message, to ensure messages aren't sent to busy
     # workers.
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue="task_queue", on_message_callback=on_message)
+    channel.basic_consume(queue="jobs", on_message_callback=on_message)
+
+    # Register the signal handler
+    signal.signal(signal.SIGTERM, functools.partial(on_terminate, channel))
 
     logger.info("Waiting for messages")
     channel.start_consuming()
