@@ -29,7 +29,7 @@ def design(job):
         logger.debug(f"Initiating new design workflow")
         source = UNIVERSAL_SOURCES[(job.bigg, job.rhea)]
         product = find_product(job.product_name, source)
-        # find_pathways()
+        pathways = find_pathways(job.model, product, job.max_predictions, source)
         # optimize(model)
         # concatenate()
         # persist()
@@ -50,3 +50,19 @@ def find_product(product_name, source):
         product_name, source
     )
     logger.debug("Task finished: Find product")
+
+
+@fork
+def find_pathways(model, product, max_predictions, source):
+    logger.debug("Task starting: Find pathways")
+    # TODO: update db state
+    predictor = cameo.strain_design.pathway_prediction.PathwayPredictor(
+        model, universal_model=source
+    )
+    return predictor.run(
+        product,
+        max_predictions=max_predictions,
+        timeout=120,  # seconds
+        silent=True,
+    )
+    logger.debug("Task starting: Find pathways")
