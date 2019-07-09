@@ -29,7 +29,7 @@ from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
 from .schemas import PredictionJobRequestSchema, PredictionJobSchema
-from .tasks import predict
+from .rabbitmq import submit_job
 
 
 with open("data/products.json") as file_:
@@ -103,19 +103,20 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         organism_name = response.json()["name"]
         # Submit a prediction to the celery queue.
-        result = predict.delay(
-            model,
-            product_name,
-            max_predictions,
-            aerobic,
-            (bigg, rhea),
-            job.id,
-            organism_id,
-            organism_name,
-            user_name,
-            user_email,
+        submit_job(
+            model=model,
+            product_name=product_name,
+            max_predictions=max_predictions,
+            aerobic=aerobic,
+            bigg=bigg,
+            rhea=rhea,
+            job_id=job.id,
+            organism_id=organism_id,
+            organism_name=organism_name,
+            user_name=user_name,
+            user_email=user_email,
         )
-        return {"id": job.id, "state": result.state}, 202
+        return {"id": job.id}, 202
 
     @staticmethod
     def retrieve_model_json(model_id, headers):
