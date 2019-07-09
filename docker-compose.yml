@@ -88,6 +88,8 @@ services:
       - /var/lib/postgresql/data
     networks:
     - default
+    ports:
+    - "${POSTGRES_PORT:-5432}:5432"
 
 # Additional services that the `web` service `depends_on` should usually only
 # be on the default network and not exposed on the general network, i.e.,
