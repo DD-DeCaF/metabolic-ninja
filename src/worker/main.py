@@ -22,6 +22,7 @@ import os
 import signal
 
 from . import tasks
+from .data import Job
 
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,9 @@ logging.config.dictConfig(
 
 
 def on_message(channel, method, properties, body):
-    logger.debug(f"Received message of size {len(body)}")
-    tasks.design(**json.loads(body))
+    logger.debug(f"Received new job")
+    job = Job.deserialize(json.loads(body))
+    tasks.design(job)
     channel.basic_ack(delivery_tag=method.delivery_tag)
 
 

@@ -21,19 +21,7 @@ from .decorators import fork
 logger = logging.getLogger(__name__)
 
 
-def design(
-    model,
-    product_name,
-    max_predictions,
-    aerobic,
-    bigg,
-    rhea,
-    job_id,
-    organism_id,
-    organism_name,
-    user_name,
-    user_email,
-):
+def design(job):
     """Run the metabolic ninja design workflow."""
     try:
         find_product(product_name)
