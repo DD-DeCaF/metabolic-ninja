@@ -173,6 +173,9 @@ def _collect_results(results, reactions, metabolites, container):
 
 def _notify(job):
     try:
+        logger.debug(
+            f"Sending email notification to {job.user_name} <{job.user_email}>"
+        )
         sendgrid = SendGridAPIClient()
         mail = Mail()
         mail.from_email = Email("DD-DeCaF <notifications@dd-decaf.eu>")

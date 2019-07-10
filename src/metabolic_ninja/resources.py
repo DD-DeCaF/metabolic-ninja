@@ -16,6 +16,7 @@
 """Implement RESTful API endpoints using resources."""
 
 import json
+import logging
 import os
 
 import requests
@@ -31,6 +32,8 @@ from .models import DesignJob, db
 from .schemas import PredictionJobRequestSchema, PredictionJobSchema
 from .rabbitmq import submit_job
 
+
+logger = logging.getLogger(__name__)
 
 with open("data/products.json") as file_:
     PRODUCT_LIST = json.load(file_)
@@ -84,6 +87,7 @@ class PredictionJobsResource(MethodResource):
         )
         db.session.add(job)
         db.session.commit()
+        logger.debug(f"Created pending job with ID {job.id}")
         # Fetch details about the user and organism name, to be used in the
         # notification email. This must be done here while the token is still
         # valid.
