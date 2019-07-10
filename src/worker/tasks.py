@@ -19,6 +19,8 @@ import logging
 
 import cameo.api
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Email, Mail, Personalization
 
 from . import designer
 from .data import Job
@@ -54,7 +56,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
         # Save the results
         job.save(status="SUCCESS", result=results)
 
-        # TODO: notify
+        _notify(job)
     except TaskFailedException:
         # Exceptions are handled in the child processes, so there's nothing to do here.
         # Just abort the workflow and get ready for new jobs.
@@ -166,4 +168,29 @@ def _collect_results(results, reactions, metabolites, container):
                     m.id for m in row.get("exotic_cofactors", [])
                 ],
             }
+        )
+
+
+def _notify(job):
+    try:
+        sendgrid = SendGridAPIClient()
+        mail = Mail()
+        mail.from_email = Email("DD-DeCaF <notifications@dd-decaf.eu>")
+        mail.template_id = "d-8caebf4f862b4c67932515c45c5404cc"
+        personalization = Personalization()
+        personalization.add_to(Email(job.user_email))
+        personalization.dynamic_template_data = {
+            "name": job.user_name,
+            "product": job.product_name,
+            "organism": job.organism_name,
+            "results_url": f"https://caffeine.dd-decaf.eu/jobs/{job.job_id}",
+        }
+        mail.add_personalization(personalization)
+        sendgrid.client.mail.send.post(request_body=mail.get())
+    except Exception as error:
+        # Suppress any problem so it doesn't mark the entire workflow as failed,
+        # but do log a warning for potential follow-up.
+        logger.warning(
+            "Unable to send email notification upon job completion",
+            exc_info=error,
         )
