@@ -33,8 +33,8 @@ logging.config.dictConfig(
         "formatters": {
             "simple": {
                 "format": (
-                    "%(asctime)s [%(levelname)s] [%(name)s] "
-                    "%(filename)s:%(funcName)s:%(lineno)d | %(message)s"
+                    "%(asctime)s [%(levelname)s] %(name)s::%(funcName)s:%(lineno)d | "
+                    "%(message)s"
                 )
             }
         },
