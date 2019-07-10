@@ -17,7 +17,6 @@ import cameo.api
 import logging
 
 from .decorators import task
-from .universal import UNIVERSAL_SOURCES
 
 
 logger = logging.getLogger(__name__)
@@ -27,14 +26,13 @@ def design(job):
     """Run the metabolic ninja design workflow."""
     try:
         logger.info(f"Initiating new design workflow")
-        source = UNIVERSAL_SOURCES[(job.bigg, job.rhea)]
 
         logger.debug("Starting task: Find product")
-        product = find_product(job, source)
+        product = find_product(job)
         logger.debug(f"Task finished; found product: {product}")
 
         logger.debug("Starting task: Find pathways")
-        pathways = find_pathways(job, product, source)
+        pathways = find_pathways(job, product)
         logger.debug(
             f"Task finished: Find pathways, found {len(pathways)} pathways"
         )
@@ -52,20 +50,20 @@ def design(job):
 
 
 @task
-def find_product(job, source):
+def find_product(job):
     # Find the product name via the cameo designer. In a future far, far away
     # this should be a call to a web service.
     # TODO: update db state
     return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(
-        job.product_name, source
+        job.product_name, job.source
     )
 
 
 @task
-def find_pathways(job, product, source):
+def find_pathways(job, product):
     # TODO: update db state
     predictor = cameo.strain_design.pathway_prediction.PathwayPredictor(
-        job.model, universal_model=source
+        job.model, universal_model=job.source
     )
     return predictor.run(
         product,

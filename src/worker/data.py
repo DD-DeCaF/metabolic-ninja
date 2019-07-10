@@ -17,6 +17,8 @@ import logging
 
 import cobra.io
 
+from .universal import UNIVERSAL_SOURCES
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,7 @@ class Job:
         self.aerobic = aerobic
         self.bigg = bigg
         self.rhea = rhea
+        self.source = UNIVERSAL_SOURCES[(self.bigg, self.rhea)]
         self.job_id = job_id
         self.organism_id = organism_id
         self.organism_name = organism_name
