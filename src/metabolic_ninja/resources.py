@@ -106,7 +106,7 @@ class PredictionJobsResource(MethodResource):
         )
         response.raise_for_status()
         organism_name = response.json()["name"]
-        # Submit a prediction to the celery queue.
+        # Submit a prediction to the rabbitmq queue.
         submit_job(
             model=model,
             product_name=product_name,
