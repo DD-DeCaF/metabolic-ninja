@@ -26,10 +26,19 @@ logger = logging.getLogger(__name__)
 def design(job):
     """Run the metabolic ninja design workflow."""
     try:
-        logger.debug(f"Initiating new design workflow")
+        logger.info(f"Initiating new design workflow")
         source = UNIVERSAL_SOURCES[(job.bigg, job.rhea)]
+
+        logger.debug("Starting task: Find product")
         product = find_product(job, source)
+        logger.debug(f"Task finished; found product: {product}")
+
+        logger.debug("Starting task: Find pathways")
         pathways = find_pathways(job, product, source)
+        logger.debug(
+            f"Task finished: Find pathways, found {len(pathways)} pathways"
+        )
+
         # optimize(model)
         # concatenate()
         # persist()
@@ -37,24 +46,23 @@ def design(job):
     except Exception:
         # Exceptions are handled in the child processes, so there's nothing to do here.
         # Just abort the workflow and get ready for new jobs.
-        pass
+        logger.info(
+            f"Task failed; aborting workflow and restaring consumption from queue"
+        )
 
 
 @task
 def find_product(job, source):
     # Find the product name via the cameo designer. In a future far, far away
     # this should be a call to a web service.
-    logger.debug("Task starting: Find product")
     # TODO: update db state
     return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(
         job.product_name, source
     )
-    logger.debug("Task finished: Find product")
 
 
 @task
 def find_pathways(job, product, source):
-    logger.debug("Task starting: Find pathways")
     # TODO: update db state
     predictor = cameo.strain_design.pathway_prediction.PathwayPredictor(
         job.model, universal_model=source
@@ -65,4 +73,3 @@ def find_pathways(job, product, source):
         timeout=120,  # seconds
         silent=True,
     )
-    logger.debug("Task starting: Find pathways")
