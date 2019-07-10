@@ -159,7 +159,7 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: SENDGRID_API_KEY
-        command: ["python", "-m", "worker.main"]
+        command: ["python", "-m", "metabolic_ninja.worker.main"]
         resources:
           requests:
             cpu: "10m"

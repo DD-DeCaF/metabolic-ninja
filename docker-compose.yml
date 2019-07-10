@@ -54,7 +54,7 @@ services:
     - POSTGRES_USERNAME=${POSTGRES_USERNAME:-postgres}
     - POSTGRES_PASS=${POSTGRES_PASS}
     - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-    command: python -m worker.main
+    command: python -m metabolic_ninja.worker.main
     restart: on-failure
 
   rabbitmq:

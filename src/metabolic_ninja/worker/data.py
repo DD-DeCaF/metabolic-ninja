@@ -21,8 +21,8 @@ import cobra.io
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import DesignJob
-from .universal import UNIVERSAL_SOURCES
+from ..models import DesignJob
+from ..universal import UNIVERSAL_SOURCES
 
 
 logger = logging.getLogger(__name__)
