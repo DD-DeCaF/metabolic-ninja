@@ -71,7 +71,11 @@ def on_terminate(channel, signum, frame):
 def main():
     logger.debug("Establishing connection and declaring task queue")
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
+        pika.ConnectionParameters(
+            # Disable heartbeat to ensure that connections aren't broken during
+            # long-running jobs.
+            host=os.environ["RABBITMQ_HOST"], heartbeat=None
+        )
     )
     channel = connection.channel()
     channel.queue_declare(queue="jobs", durable=True)
