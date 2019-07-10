@@ -102,6 +102,7 @@ def optimize(job, pathways):
         #  review.
 
         # Differential FVA
+        logger.debug("Starting optimization with Differential FVA")
         designs = designer.differential_fva_optimization(pathway, job.model)
         results = designer.evaluate_diff_fva(
             designs, pathway, job.model, "PathwayPredictor+DifferentialFVA"
@@ -111,12 +112,14 @@ def optimize(job, pathways):
 
         # OptGene
         # FIXME (Moritz): Disabled for fast test on staging.
+        # logger.debug("Starting optimization with OptGene")
         # designs = designer.opt_gene(pathway, job.model)
         # results = designer.evaluate_opt_gene(designs, pathway, job.model, "PathwayPredictor+OptGene")
         # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
         # _collect_results(results, reactions, metabolites, opt_gene)
 
         # Cofactor Swap Optimization
+        logger.debug("Starting optimization with Cofactor Swapping")
         designs = designer.cofactor_swap_optimization(pathway, job.model)
         results = designer.evaluate_cofactor_swap(
             designs, pathway, job.model, "PathwayPredictor+CofactorSwap"
