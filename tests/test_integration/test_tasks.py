@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test expected functioning of the celery tasks."""
+"""Test expected functioning of the worker tasks."""
 
 
 # from cameo import load_model
