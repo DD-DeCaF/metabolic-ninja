@@ -16,12 +16,18 @@
 import logging
 import multiprocessing
 import functools
+import sys
 
 
 logger = logging.getLogger(__name__)
 
 
-def fork(function):
+class TaskFailedException(Exception):
+    """Thrown if a task throws an unhandled exception."""
+    pass
+
+
+def task(function):
     """
     Execute the given function in a child process.
 
@@ -30,15 +36,25 @@ def fork(function):
     so is subject to the same restrictions[1], namely, the object must be
     pickleable and not too large (approximately 32 MiB+).
 
+    If the child process throws an exception, it will be logged, reported to Sentry, the
+    database status will be updated and `TaskFailedException` will be raised.
+
     [1] https://docs.python.org/3/library/multiprocessing.html#multiprocessing.connection.Connection.send
     """
 
-    def runner(pipe, *args, **kwargs):
+    def runner(pipe, job, *args, **kwargs):
         # This is the function called in a new process. Call the wrapped
         # function with the given arguments and pass the return value back
         # through a pipe.
-        retval = function(*args, **kwargs)
-        pipe.send(retval)
+        try:
+            retval = function(job, *args, **kwargs)
+        except Exception as exception:
+            # TODO: sentry
+            # TODO: update db state
+            logger.exception(exception)
+            sys.exit(-1)
+        else:
+            pipe.send(retval)
 
     @functools.wraps(function)
     def wrapper(*args, **kwargs):
@@ -51,6 +67,8 @@ def fork(function):
         )
         process.start()
         process.join()
+        if process.exitcode != 0:
+            raise TaskFailedException()
         # Return the piped data back to the caller.
         return pipe_in.recv()
 
