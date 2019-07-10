@@ -54,7 +54,7 @@ def task(function):
         try:
             retval = function(job, *args, **kwargs)
         except Exception as exception:
-            # TODO: update db state
+            job.save(status="FAILURE")
             logger.exception(exception)
             sentry_sdk.capture_exception(exception)
             # Wait for the sentry event to be sent; otherwise we'd exit the process too

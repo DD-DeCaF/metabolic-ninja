@@ -22,7 +22,7 @@ from cobra.io.dict import metabolite_to_dict, reaction_to_dict
 
 from . import designer
 from .data import Job
-from .decorators import task, TaskFailedException
+from .decorators import TaskFailedException, task
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ def design(connection, channel, delivery_tag, body, ack_message):
     job = Job.deserialize(json.loads(body))
 
     try:
+        job.save(status="STARTED")
+
         logger.info(f"Initiating new design workflow")
 
         logger.debug("Starting task: Find product")
@@ -49,8 +51,10 @@ def design(connection, channel, delivery_tag, body, ack_message):
         results = optimize(job, pathways)
         logger.debug("Task finished: Optimize")
 
-        # persist()
-        # notify()
+        # Save the results
+        job.save(status="SUCCESS", result=results)
+
+        # TODO: notify
     except TaskFailedException:
         # Exceptions are handled in the child processes, so there's nothing to do here.
         # Just abort the workflow and get ready for new jobs.

@@ -14,13 +14,31 @@
 # limitations under the License.
 
 import logging
+import os
+from contextlib import contextmanager
 
 import cobra.io
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from .models import DesignJob
 from .universal import UNIVERSAL_SOURCES
 
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def db_session():
+    """Connect to the database and yield an SA session."""
+    engine = create_engine(
+        "postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASS}@{POSTGRES_HOST}:"
+        "{POSTGRES_PORT}/{POSTGRES_DB_NAME}".format(**os.environ)
+    )
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    yield session
+    session.close()
 
 
 class Job:
@@ -70,6 +88,15 @@ class Job:
         self.organism_name = organism_name
         self.user_name = user_name
         self.user_email = user_email
+
+    def save(self, **kwargs):
+        logger.debug(f"Updating database status of job {self.job_id}")
+        with db_session() as session:
+            job = session.query(DesignJob).filter_by(id=self.job_id).one()
+            for column, value in kwargs.items():
+                setattr(job, column, value)
+            session.add(job)
+            session.commit()
 
     @staticmethod
     def deserialize(params):
