@@ -20,6 +20,9 @@ import pika
 import os
 import signal
 import threading
+import sys
+
+import sentry_sdk
 
 from . import tasks
 
@@ -53,6 +56,12 @@ logging.config.dictConfig(
         "root": {"level": "DEBUG", "handlers": ["console"]},
     }
 )
+sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))
+# Ignore some verbose loggers from pika (relevant when unable to connect, but we handle
+# that anyway).
+sentry_sdk.integrations.logging.ignore_logger("pika.adapters.utils.io_services_utils")
+sentry_sdk.integrations.logging.ignore_logger("pika.adapters.utils.connection_workflow")
+sentry_sdk.integrations.logging.ignore_logger("pika.adapters.blocking_connection")
 
 # Whenever a job is received, the work on it will be started in a new thread. This is
 # to allow the RabbitMQ i/o loop to do its thing (like sending hearbeats to the server
@@ -63,7 +72,7 @@ worker_threads = []
 
 def on_message(channel, method_frame, header_frame, body, connection):
     """Callback to receive new messages from RabbitMQ."""
-    logger.debug(f"Received new job")
+    logger.debug(f"Received message {method_frame.delivery_tag}")
     # Start the work in a separate thread, to avoid blocking the pika i/o loop.
     thread = threading.Thread(
         target=tasks.design,
@@ -89,9 +98,17 @@ def on_terminate(channel, signum, frame):
 
 def main():
     logger.debug("Establishing connection and declaring task queue")
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
-    )
+    try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
+        )
+    except pika.exceptions.AMQPConnectionError:
+        # Connection failed - exit and rely on the environment to restart the
+        # application. Don't let the exception bubble though; we don't need a Sentry
+        # notification for this.
+        logger.warning("AMQPConnectionError: Cannot connect to RabbitMQ. Aborting.")
+        sys.exit(-1)
+
     channel = connection.channel()
     channel.queue_declare(queue="jobs", durable=True)
     # Prefetch only a single message, to ensure messages aren't sent to busy

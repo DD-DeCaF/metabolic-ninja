@@ -17,6 +17,9 @@ import logging
 import multiprocessing
 import functools
 import sys
+import os
+
+import sentry_sdk
 
 
 logger = logging.getLogger(__name__)
@@ -43,15 +46,20 @@ def task(function):
     """
 
     def runner(pipe, job, *args, **kwargs):
-        # This is the function called in a new process. Call the wrapped
-        # function with the given arguments and pass the return value back
-        # through a pipe.
+        # This is the function called in a new process.
+        # Sentry needs to be initialized here (in addition to the main process).
+        sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))
+        # Call the wrapped function with the given arguments and pass the return value
+        # back through a pipe.
         try:
             retval = function(job, *args, **kwargs)
         except Exception as exception:
-            # TODO: sentry
             # TODO: update db state
             logger.exception(exception)
+            sentry_sdk.capture_exception(exception)
+            # Wait for the sentry event to be sent; otherwise we'd exit the process too
+            # soon.
+            sentry_sdk.flush()
             sys.exit(-1)
         else:
             pipe.send(retval)
