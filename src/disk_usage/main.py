@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Periodically check disk usage for the redis drive at /data.
+Periodically check disk usage for the redis drive at /var/lib/rabbitmq.
 
 If the free disk space is lower than the threshold, log an error event to be
 reported to Sentry for notification.
@@ -61,7 +61,7 @@ signal.signal(signal.SIGTERM, handle_signal)
 
 
 while True:
-    st = os.statvfs("/data")
+    st = os.statvfs("/var/lib/rabbitmq")
     pct_free = round(st.f_bfree / st.f_blocks * 100)
     total_gb = round((st.f_bsize * st.f_blocks) / 1024 / 1024 / 1024)
     free_gb = round((st.f_bsize * st.f_bfree) / 1024 / 1024 / 1024)

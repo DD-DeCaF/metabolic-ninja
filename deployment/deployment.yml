@@ -14,11 +14,6 @@ spec:
         app: metabolic-ninja
         env: staging
     spec:
-      # Ensure running celery tasks are allowed to finish during warm shutdowns.
-      # The task expected to run for the longest is OptGene which has a timeout
-      # of 2 hours. The below value is then set to 3 hours plus 2 minutes to
-      # allow for some small overhead.
-      terminationGracePeriodSeconds: 10920
       initContainers:
       - name: migrate
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
@@ -66,8 +61,6 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: POSTGRES_PASS
-        - name: WORKER_CONCURRENCY
-          value: "4"
         command: ["flask", "db", "upgrade"]
         resources:
           requests:
@@ -123,8 +116,6 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: POSTGRES_PASS
-        - name: WORKER_CONCURRENCY
-          value: "4"
         command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
         readinessProbe:
           httpGet:
@@ -140,10 +131,8 @@ spec:
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
         env:
-        - name: REDIS_HOST
-          value: localhost:6379
-        - name: C_FORCE_ROOT
-          value: "1"
+        - name: RABBITMQ_HOST
+          value: localhost
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
@@ -170,53 +159,24 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-staging
               key: SENDGRID_API_KEY
-        - name: WORKER_CONCURRENCY
-          value: "4"
-        command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
+        command: ["python", "-m", "worker.main"]
         resources:
           requests:
             cpu: "10m"
           limits:
             cpu: "4000m"
-      - name: redis
-        image: redis:latest
+      - name: rabbitmq
+        image: rabbitmq:3.7
         ports:
-        - containerPort: 6379
-        command: ["redis-server", "--save 900 1", "--save 300 10"]
+        - containerPort: 5672
         resources:
           requests:
             cpu: "10m"
           limits:
             cpu: "2000m"
-        volumeMounts:
-          - mountPath: "/data"
-            name: metabolic-ninja-staging
-      - name: flower
-        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 5555
-        env:
-        - name: REDIS_HOST
-          value: localhost:6379
-        - name: FLOWER_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: metabolic-ninja-staging
-              key: FLOWER_USERNAME
-        - name: FLOWER_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: metabolic-ninja-staging
-              key: FLOWER_PASSWORD
-        - name: WORKER_CONCURRENCY
-          value: "4"
-        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
+        # volumeMounts:
+        #   - mountPath: "/var/lib/rabbitmq"
+        #     name: metabolic-ninja-staging
       - name: disk-usage
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         command: ["python", "-m", "disk_usage.main"]
@@ -232,7 +192,7 @@ spec:
           limits:
             cpu: "2000m"
         volumeMounts:
-          - mountPath: "/data"
+          - mountPath: "/var/lib/rabbitmq"
             name: metabolic-ninja-staging
       volumes:
         - name: metabolic-ninja-staging
