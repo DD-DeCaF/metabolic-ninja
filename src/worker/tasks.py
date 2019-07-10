@@ -14,11 +14,11 @@
 # limitations under the License.
 
 import functools
+import json
+import logging
 
 import cameo.api
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
-import logging
-import json
 
 from . import designer
 from .data import Job

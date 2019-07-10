@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 import multiprocessing
-import functools
-import sys
 import os
+import sys
 
 import sentry_sdk
 

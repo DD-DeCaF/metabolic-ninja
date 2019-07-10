@@ -16,12 +16,12 @@
 import functools
 import logging
 import logging.config
-import pika
 import os
 import signal
-import threading
 import sys
+import threading
 
+import pika
 import sentry_sdk
 
 from . import tasks
