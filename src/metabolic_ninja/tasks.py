@@ -411,7 +411,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             )
         logger.info("Calculating biomass coupled production values.")
         with model_tmp:
-            growth, bpc_yield, _ = evaluate_biomass_coupled_production(
+            growth, bpc_yield = evaluate_biomass_coupled_production(
                 model_tmp,
                 pathway.product.id,
                 model_tmp.biomass,
