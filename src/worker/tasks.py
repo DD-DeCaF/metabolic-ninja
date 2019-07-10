@@ -13,19 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 import cameo.api
 from cobra.io.dict import metabolite_to_dict, reaction_to_dict
 import logging
+import json
 
 from . import designer
+from .data import Job
 from .decorators import task
 
 
 logger = logging.getLogger(__name__)
 
 
-def design(job):
+def design(connection, channel, delivery_tag, body, ack_message):
     """Run the metabolic ninja design workflow."""
+    job = Job.deserialize(json.loads(body))
+
     try:
         logger.info(f"Initiating new design workflow")
 
@@ -50,6 +56,11 @@ def design(job):
         # Just abort the workflow and get ready for new jobs.
         logger.info(
             f"Task failed; aborting workflow and restaring consumption from queue"
+        )
+    finally:
+        # Acknowledge the message, whether it failed or not.
+        connection.add_callback_threadsafe(
+            functools.partial(ack_message, channel, delivery_tag)
         )
 
 

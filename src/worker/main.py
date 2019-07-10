@@ -16,13 +16,12 @@
 import functools
 import logging
 import logging.config
-import json
 import pika
 import os
 import signal
+import threading
 
 from . import tasks
-from .data import Job
 
 
 logger = logging.getLogger(__name__)
@@ -55,15 +54,35 @@ logging.config.dictConfig(
     }
 )
 
+# Whenever a job is received, the work on it will be started in a new thread. This is
+# to allow the RabbitMQ i/o loop to do its thing (like sending hearbeats to the server
+# to keep the connection alive). Started threads are stored in this list, so that we can
+# wait for the threads to complete when terminating the application.
+worker_threads = []
 
-def on_message(channel, method, properties, body):
+
+def on_message(channel, method_frame, header_frame, body, connection):
+    """Callback to receive new messages from RabbitMQ."""
     logger.debug(f"Received new job")
-    job = Job.deserialize(json.loads(body))
-    tasks.design(job)
-    channel.basic_ack(delivery_tag=method.delivery_tag)
+    # Start the work in a separate thread, to avoid blocking the pika i/o loop.
+    thread = threading.Thread(
+        target=tasks.design,
+        args=(connection, channel, method_frame.delivery_tag, body, ack_message),
+    )
+    thread.start()
+    worker_threads.append(thread)
+
+
+def ack_message(channel, delivery_tag):
+    """Callback to ACK a finished job."""
+    # If the channel was closed for some reason, ignore.
+    logger.debug(f"ACKing message {delivery_tag}")
+    if channel.is_open:
+        channel.basic_ack(delivery_tag)
 
 
 def on_terminate(channel, signum, frame):
+    """SIGTERM signal handler to terminate the application."""
     logger.debug(f"Caught SIGTERM, cancelling consumption")
     channel.stop_consuming()
 
@@ -71,24 +90,33 @@ def on_terminate(channel, signum, frame):
 def main():
     logger.debug("Establishing connection and declaring task queue")
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            # Disable heartbeat to ensure that connections aren't broken during
-            # long-running jobs.
-            host=os.environ["RABBITMQ_HOST"], heartbeat=None
-        )
+        pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
     )
     channel = connection.channel()
     channel.queue_declare(queue="jobs", durable=True)
     # Prefetch only a single message, to ensure messages aren't sent to busy
     # workers.
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue="jobs", on_message_callback=on_message)
+    # Pass the connection to the message callback - it'll be needed later to ACK
+    # messages.
+    callback = functools.partial(on_message, connection=connection)
+    channel.basic_consume(queue="jobs", on_message_callback=callback)
 
     # Register the signal handler
     signal.signal(signal.SIGTERM, functools.partial(on_terminate, channel))
 
-    logger.info("Waiting for messages")
+    logger.info("Ready for action, waiting for messages from RabbitMQ")
     channel.start_consuming()
+
+    logger.info(
+        "Pika consumption loop exited. Cleaning up and terminating application..."
+    )
+
+    # Wait for any worker threads to complete
+    for thread in worker_threads:
+        thread.join()
+
+    connection.close()
 
 
 if __name__ == "__main__":
