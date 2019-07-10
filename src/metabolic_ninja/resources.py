@@ -29,8 +29,8 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
-from .schemas import PredictionJobRequestSchema, PredictionJobSchema
 from .rabbitmq import submit_job
+from .schemas import PredictionJobRequestSchema, PredictionJobSchema
 
 
 logger = logging.getLogger(__name__)

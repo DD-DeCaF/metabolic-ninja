@@ -18,9 +18,7 @@
 
 import cobra
 import pytest
-from cameo.strain_design.pathway_prediction.pathway_predictor import (
-    PathwayResult,
-)
+from cameo.strain_design.pathway_prediction.pathway_predictor import PathwayResult
 
 from metabolic_ninja.worker import helpers
 

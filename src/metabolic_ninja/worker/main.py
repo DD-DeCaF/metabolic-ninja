@@ -77,7 +77,7 @@ worker_threads = []
 
 
 def on_message(channel, method_frame, header_frame, body, connection):
-    """Callback to receive new messages from RabbitMQ."""
+    """Handle new messages from RabbitMQ."""
     logger.debug(f"Received message {method_frame.delivery_tag}")
     # Start the work in a separate thread, to avoid blocking the pika i/o loop.
     thread = threading.Thread(
@@ -95,7 +95,7 @@ def on_message(channel, method_frame, header_frame, body, connection):
 
 
 def ack_message(channel, delivery_tag):
-    """Callback to ACK a finished job."""
+    """Acknowledge a finished job."""
     # If the channel was closed for some reason, ignore.
     logger.debug(f"ACKing message {delivery_tag}")
     if channel.is_open:

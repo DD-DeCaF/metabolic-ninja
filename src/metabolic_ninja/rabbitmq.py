@@ -16,6 +16,7 @@
 """Functions to submit jobs through RabbitMQ."""
 
 import json
+
 import pika
 
 

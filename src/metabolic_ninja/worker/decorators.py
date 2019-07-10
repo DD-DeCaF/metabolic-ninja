@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class TaskFailedException(Exception):
     """Thrown if a task throws an unhandled exception."""
+
     pass
 
 
@@ -42,7 +43,7 @@ def task(function):
     If the child process throws an exception, it will be logged, reported to Sentry, the
     database status will be updated and `TaskFailedException` will be raised.
 
-    [1] https://docs.python.org/3/library/multiprocessing.html#multiprocessing.connection.Connection.send
+    [1] https://docs.python.org/3/library/multiprocessing.html#multiprocessing.connection.Connection.send  # noqa
     """
 
     def runner(pipe, job, *args, **kwargs):

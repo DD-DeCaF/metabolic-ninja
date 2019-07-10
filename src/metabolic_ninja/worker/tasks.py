@@ -120,7 +120,8 @@ def optimize(job, pathways):
         # FIXME (Moritz): Disabled for fast test on staging.
         # logger.debug("Starting optimization with OptGene")
         # designs = designer.opt_gene(pathway, job.model)
-        # results = designer.evaluate_opt_gene(designs, pathway, job.model, "PathwayPredictor+OptGene")
+        # results = designer.evaluate_opt_gene(designs, pathway, job.model,
+        #   "PathwayPredictor+OptGene")
         # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
         # _collect_results(results, reactions, metabolites, opt_gene)
 
