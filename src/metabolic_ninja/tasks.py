@@ -297,7 +297,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
                         model, pathway.product.id, model.carbon_source
                     )
                 with model:
-                    growth, bpcy, _ = evaluate_biomass_coupled_production(
+                    growth, bpcy = evaluate_biomass_coupled_production(
                         model,
                         pathway.product.id,
                         model.biomass,
