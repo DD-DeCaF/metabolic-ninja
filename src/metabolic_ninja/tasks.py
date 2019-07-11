@@ -22,6 +22,7 @@ import cameo.core.target as targets
 import cobra
 import sentry_sdk
 from cameo.api import design
+from cameo.core.target import ReactionInversionTarget
 from cameo.strain_design import DifferentialFVA, OptGene
 from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
@@ -327,8 +328,16 @@ def evaluate_diff_fva(designs, pathway, model, method):
 
 
 def manipulation_helper(target):
-    """Convert a FluxModulationTarget to a dictionary."""
-    result = {"id": target.id, "value": target.fold_change}
+    """Convert a design target to a result object."""
+    result = {
+        "id": target.id,
+        "score": target.fold_change,
+        "value": target._value
+    }
+    if isinstance(target, ReactionInversionTarget):
+        result["direction"] = "invert"
+        return result
+
     if target.fold_change > 0.0:
         result["direction"] = "up"
     elif target.fold_change < 0.0:
