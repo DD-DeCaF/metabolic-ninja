@@ -61,7 +61,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
         # Exceptions are handled in the child processes, so there's nothing to do here.
         # Just abort the workflow and get ready for new jobs.
         logger.info(
-            f"Task failed; aborting workflow and restaring consumption from queue"
+            f"Task failed; aborting workflow and restarting consumption from queue"
         )
     finally:
         # Acknowledge the message, whether it failed or not.
