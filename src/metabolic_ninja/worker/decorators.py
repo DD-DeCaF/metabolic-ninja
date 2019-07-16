@@ -55,6 +55,10 @@ def task(function):
         try:
             retval = function(job, *args, **kwargs)
         except Exception as exception:
+            # Send a null value to stop the main thread from blocking on
+            # receiving.
+            pipe.send(None)
+            # Update the job status.
             job.save(status="FAILURE")
             logger.exception(exception)
             sentry_sdk.capture_exception(exception)
@@ -75,10 +79,13 @@ def task(function):
             target=runner, args=(pipe_out,) + args, kwargs=kwargs
         )
         process.start()
+        # Hang on receiving data before joining the process. The other way
+        # around seems to end up in a deadlock in some cases.
+        retval = pipe_in.recv()
         process.join()
         if process.exitcode != 0:
             raise TaskFailedException()
         # Return the piped data back to the caller.
-        return pipe_in.recv()
+        return retval
 
     return wrapper
