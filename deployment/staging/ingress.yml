@@ -17,25 +17,3 @@ spec:
         backend:
           serviceName: metabolic-ninja-staging
           servicePort: 80
-
----
-
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: metabolic-ninja-flower-staging
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-spec:
-  tls:
-  - hosts:
-    - flower-metabolic-ninja-staging.dd-decaf.eu
-    secretName: decaf-tls
-  rules:
-  - host: flower-metabolic-ninja-staging.dd-decaf.eu
-    http:
-      paths:
-      - path: /
-        backend:
-          serviceName: metabolic-ninja-staging
-          servicePort: 5555

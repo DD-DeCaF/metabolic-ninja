@@ -4,15 +4,6 @@ flask-apispec
 sentry-sdk[flask]
 gunicorn
 gevent
-# Use the latest pre-release of Celery to remedy the following issue with
-# graceful terminations, which occurs on 4.2.1:
-# https://github.com/celery/billiard/issues/260
-celery[redis] >= 4.3.0rc2
-redis
-flower
-# Flower 0.9.2 is not compatible with tornado 6, but does not constrain the
-# version, so pin it explicitly here.
-tornado<6
 python-jose
 Flask-Migrate
 flask-sqlalchemy
@@ -22,3 +13,4 @@ Alembic
 cameo >= 0.11.15
 cobra >= 0.15.3
 sendgrid
+pika

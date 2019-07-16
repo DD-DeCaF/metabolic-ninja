@@ -18,6 +18,8 @@ import logging
 import re
 from operator import itemgetter
 
+from cameo.core.target import ReactionInversionTarget
+
 
 __all__ = ("identify_exotic_cofactors",)
 
@@ -174,3 +176,41 @@ def identify_exotic_cofactors(pathway, model, threshold=1e-07):
         # Add new reactions to exploration queue.
         rxn_queue.extend((target.reactions & heterologous_reactions) - seen)
     return exotic_cofactors
+
+
+def manipulation_helper(target):
+    """Convert a design target to a result object."""
+    result = {
+        "id": target.id,
+        "score": target.fold_change,
+        "value": target._value
+    }
+    if isinstance(target, ReactionInversionTarget):
+        result["direction"] = "invert"
+        return result
+
+    if target.fold_change > 0.0:
+        result["direction"] = "up"
+    elif target.fold_change < 0.0:
+        result["direction"] = "down"
+    else:
+        raise ValueError(
+            f"Expected a non-zero fold-change for a flux modulation target "
+            f"({target.id})."
+        )
+    return result
+
+
+def find_synthetic_reactions(pathway):
+    metabolites = {m for r in pathway.reactions for m in r.metabolites}
+    # Products of adapter reactions correspond to the metabolites in MetaNetX
+    # namespace. Any metabolite for which an adapter exists is a native
+    # compound.
+    foreign = metabolites - {m for r in pathway.adapters for m in r.products}
+    # Create a set of demand reactions for any foreign metabolites.
+    demand_rxns = {
+        r for r in pathway.exchanges if set(r.reactants).issubset(foreign)
+    }
+    # Add the demand reaction for the final product.
+    demand_rxns.add(pathway.product)
+    return demand_rxns

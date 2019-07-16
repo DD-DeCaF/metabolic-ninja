@@ -84,6 +84,7 @@ class Default:
                 # All loggers will by default use the root logger below (and
                 # hence be very verbose). To silence spammy/uninteresting log
                 # output, add the loggers here and increase the loglevel.
+                "pika": {"level": "WARNING", "handlers": ["console"]}
             },
             "root": {"level": "DEBUG", "handlers": ["console"]},
         }

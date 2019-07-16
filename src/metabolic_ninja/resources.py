@@ -16,6 +16,7 @@
 """Implement RESTful API endpoints using resources."""
 
 import json
+import logging
 import os
 
 import requests
@@ -28,9 +29,11 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
+from .rabbitmq import submit_job
 from .schemas import PredictionJobRequestSchema, PredictionJobSchema
-from .tasks import predict
 
+
+logger = logging.getLogger(__name__)
 
 with open("data/products.json") as file_:
     PRODUCT_LIST = json.load(file_)
@@ -84,6 +87,7 @@ class PredictionJobsResource(MethodResource):
         )
         db.session.add(job)
         db.session.commit()
+        logger.debug(f"Created pending job with ID {job.id}")
         # Fetch details about the user and organism name, to be used in the
         # notification email. This must be done here while the token is still
         # valid.
@@ -102,20 +106,21 @@ class PredictionJobsResource(MethodResource):
         )
         response.raise_for_status()
         organism_name = response.json()["name"]
-        # Submit a prediction to the celery queue.
-        result = predict.delay(
-            model,
-            product_name,
-            max_predictions,
-            aerobic,
-            (bigg, rhea),
-            job.id,
-            organism_id,
-            organism_name,
-            user_name,
-            user_email,
+        # Submit a prediction to the rabbitmq queue.
+        submit_job(
+            model=model,
+            product_name=product_name,
+            max_predictions=max_predictions,
+            aerobic=aerobic,
+            bigg=bigg,
+            rhea=rhea,
+            job_id=job.id,
+            organism_id=organism_id,
+            organism_name=organism_name,
+            user_name=user_name,
+            user_email=user_email,
         )
-        return {"id": job.id, "state": result.state}, 202
+        return {"id": job.id}, 202
 
     @staticmethod
     def retrieve_model_json(model_id, headers):
@@ -139,7 +144,7 @@ class PredictionJobsResource(MethodResource):
         response.raise_for_status()
         return response.json()
 
-    @marshal_with(PredictionJobSchema(many=True, exclude=("result",)))
+    @marshal_with(PredictionJobSchema(many=True, exclude=("result",)), 200)
     def get(self):
         # Return a list of jobs that the user can see.
         return DesignJob.query.filter(
@@ -149,7 +154,8 @@ class PredictionJobsResource(MethodResource):
 
 
 class PredictionJobResource(MethodResource):
-    @marshal_with(PredictionJobSchema())
+    @marshal_with(PredictionJobSchema(), 200)
+    @marshal_with(PredictionJobSchema(), 202)
     def get(self, job_id):
         job_id = int(job_id)
         try:
