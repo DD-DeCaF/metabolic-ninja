@@ -30,7 +30,7 @@ spec:
         - name: REDIS_HOST
           value: localhost:6379
         - name: MODEL_STORAGE_API
-          value: https://model-storage-staging/model-storage
+          value: http://model-storage-staging/model-storage
         - name: IAM_API
           value: http://iam-staging/iam
         - name: WAREHOUSE_API
@@ -85,7 +85,7 @@ spec:
         - name: REDIS_HOST
           value: localhost:6379
         - name: MODEL_STORAGE_API
-          value: https://model-storage-staging/model-storage
+          value: http://model-storage-staging/model-storage
         - name: IAM_API
           value: http://iam-staging/iam
         - name: WAREHOUSE_API
