@@ -49,12 +49,33 @@ def design(connection, channel, delivery_tag, body, ack_message):
             f"Task finished: Find pathways, found {len(pathways)} pathways"
         )
 
-        logger.debug("Starting task: Optimize")
-        results = optimize(job, pathways)
-        logger.debug("Task finished: Optimize")
+        optimization_results = {
+            "diff_fva": [],
+            "opt_gene": [],
+            "cofactor_swap": [],
+            "reactions": {},
+            "metabolites": {},
+        }
+
+        for index, pathway in enumerate(pathways, start=1):
+            # Differential FVA
+            logger.debug(f"Starting task: Differential FVA (pathway {index}/{len(pathways)})")
+            results = diff_fva(job, pathway, "PathwayPredictor+DifferentialFVA")
+            _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["diff_fva"])
+
+            # OptGene
+            # FIXME (Moritz): Disabled for fast test on staging.
+            # logger.debug(f"Starting task: OptGene (pathway {index}/{len(pathways)})")
+            # results = opt_gene(pathway, job.model, "PathwayPredictor+OptGene")
+            # _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["opt_gene"])
+
+            # Cofactor Swap Optimization
+            logger.debug(f"Starting task: Cofactor Swap (pathway {index}/{len(pathways)})")
+            results = cofactor_swap(job, pathway, "PathwayPredictor+CofactorSwap")
+            _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["cofactor_swap"])
 
         # Save the results
-        job.save(status="SUCCESS", result=results)
+        job.save(status="SUCCESS", result=optimization_results)
 
         _notify(job)
     except TaskFailedException:
@@ -95,52 +116,42 @@ def find_pathways(job, product):
 
 
 @task
-def optimize(job, pathways):
-    reactions = {}
-    metabolites = {}
-    diff_fva = []
-    opt_gene = []
-    cofactor_swap = []
+def diff_fva(job, pathway, method):
+    logger.debug("DiffFVA: Optimizing")
+    designs = designer.differential_fva_optimization(pathway, job.model)
+    logger.debug("DiffFVA: Evaluating")
+    results = designer.evaluate_diff_fva(designs, pathway, job.model, method)
+    # TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
+    #  now. As there is an unresolved bug that will get in the way of the user
+    #  optimizeview.
+    # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
+    return results
 
-    for pathway in pathways:
-        # TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
-        #  now. As there is an unresolved bug that will get in the way of the user
-        #  review.
 
-        # Differential FVA
-        logger.debug("Starting optimization with Differential FVA")
-        designs = designer.differential_fva_optimization(pathway, job.model)
-        results = designer.evaluate_diff_fva(
-            designs, pathway, job.model, "PathwayPredictor+DifferentialFVA"
-        )
-        # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
-        _collect_results(results, reactions, metabolites, diff_fva)
+@task
+def opt_gene(job, pathway, method):
+    logger.debug("OptGene: Optimizing")
+    designs = designer.opt_gene(pathway, job.model)
+    logger.debug("OptGene: Evaluating")
+    results = designer.evaluate_opt_gene(designs, pathway, job.model, method)
+    # TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
+    #  now. As there is an unresolved bug that will get in the way of the user
+    #  optimizeview.
+    # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
+    return results
 
-        # OptGene
-        # FIXME (Moritz): Disabled for fast test on staging.
-        # logger.debug("Starting optimization with OptGene")
-        # designs = designer.opt_gene(pathway, job.model)
-        # results = designer.evaluate_opt_gene(designs, pathway, job.model,
-        #   "PathwayPredictor+OptGene")
-        # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
-        # _collect_results(results, reactions, metabolites, opt_gene)
 
-        # Cofactor Swap Optimization
-        logger.debug("Starting optimization with Cofactor Swapping")
-        designs = designer.cofactor_swap_optimization(pathway, job.model)
-        results = designer.evaluate_cofactor_swap(
-            designs, pathway, job.model, "PathwayPredictor+CofactorSwap"
-        )
-        # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
-        _collect_results(results, reactions, metabolites, cofactor_swap)
-
-    return {
-        "diff_fva": diff_fva,
-        "cofactor_swap": cofactor_swap,
-        "opt_gene": opt_gene,
-        "reactions": reactions,
-        "metabolites": metabolites,
-    }
+@task
+def cofactor_swap(job, pathway, method):
+    logger.debug("Cofactor swap: Optimizing")
+    designs = designer.cofactor_swap_optimization(pathway, job.model)
+    logger.debug("Cofactor swap: Evaluating")
+    results = designer.evaluate_cofactor_swap(designs, pathway, job.model, method)
+    # TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
+    #  now. As there is an unresolved bug that will get in the way of the user
+    #  optimizeview.
+    # results = designer.evaluate_exotic_cofactors(results, pathway, job.model)
+    return results
 
 
 def _collect_results(results, reactions, metabolites, container):
