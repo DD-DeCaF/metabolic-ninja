@@ -16,6 +16,7 @@
 """Functions to submit jobs through RabbitMQ."""
 
 import json
+import os
 
 import pika
 
@@ -24,7 +25,7 @@ def submit_job(**kwargs):
     """Submit a new job to the message queue."""
     message = json.dumps(kwargs)
     with pika.BlockingConnection(
-        pika.ConnectionParameters(host="rabbitmq")
+        pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
     ) as connection:
         with connection.channel() as channel:
             channel.queue_declare(queue="jobs", durable=True)
