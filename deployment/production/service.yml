@@ -1,0 +1,17 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: metabolic-ninja-production
+spec:
+  selector:
+    app: metabolic-ninja
+    env: production
+  ports:
+  - name: web
+    protocol: TCP
+    port: 80
+    targetPort: 8000
+  - name: flower
+    protocol: TCP
+    port: 5555
+    targetPort: 5555

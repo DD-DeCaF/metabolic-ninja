@@ -1,0 +1,240 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabolic-ninja-staging
+spec:
+  selector:
+    matchLabels:
+      app: metabolic-ninja
+      env: staging
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: metabolic-ninja
+        env: staging
+    spec:
+      # Ensure running celery tasks are allowed to finish during warm shutdowns.
+      # The task expected to run for the longest is OptGene which has a timeout
+      # of 2 hours. The below value is then set to 3 hours plus 2 minutes to
+      # allow for some small overhead.
+      terminationGracePeriodSeconds: 10920
+      initContainers:
+      - name: migrate
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        env:
+        - name: ENVIRONMENT
+          value: production
+        - name: SCRIPT_NAME
+          value: /metabolic-ninja
+        - name: FLASK_APP
+          value: src/metabolic_ninja/wsgi.py
+        - name: ALLOWED_ORIGINS
+          value: https://caffeine.dd-decaf.eu,https://staging.dd-decaf.eu,http://localhost:4200
+        - name: REDIS_HOST
+          value: localhost:6379
+        - name: MODEL_STORAGE_API
+          value: https://api-staging.dd-decaf.eu/mstorage
+        - name: IAM_API
+          value: http://iam-staging/iam
+        - name: WAREHOUSE_API
+          value: http://warehouse-staging/warehouse
+        - name: POSTGRES_HOST
+          value: cloudsql-proxy
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja_staging
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SECRET_KEY
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_PASS
+        - name: WORKER_CONCURRENCY
+          value: "4"
+        command: ["flask", "db", "upgrade"]
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+      containers:
+      - name: web
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: production
+        - name: SCRIPT_NAME
+          value: /metabolic-ninja
+        - name: FLASK_APP
+          value: src/metabolic_ninja/wsgi.py
+        - name: ALLOWED_ORIGINS
+          value: https://caffeine.dd-decaf.eu,https://staging.dd-decaf.eu,http://localhost:4200
+        - name: REDIS_HOST
+          value: localhost:6379
+        - name: MODEL_STORAGE_API
+          value: https://api-staging.dd-decaf.eu/mstorage
+        - name: IAM_API
+          value: http://iam-staging/iam
+        - name: WAREHOUSE_API
+          value: http://warehouse-staging/warehouse
+        - name: POSTGRES_HOST
+          value: cloudsql-proxy
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja_staging
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SECRET_KEY
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_PASS
+        - name: WORKER_CONCURRENCY
+          value: "4"
+        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
+        readinessProbe:
+          httpGet:
+            path: /metabolic-ninja/healthz
+            port: 8000
+          initialDelaySeconds: 5
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+      - name: worker
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_HOST
+          value: localhost:6379
+        - name: C_FORCE_ROOT
+          value: "1"
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        - name: POSTGRES_HOST
+          value: cloudsql-proxy
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB_NAME
+          value: metabolic_ninja
+        - name: POSTGRES_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_USERNAME
+        - name: POSTGRES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: POSTGRES_PASS
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENDGRID_API_KEY
+        - name: WORKER_CONCURRENCY
+          value: "4"
+        command: ["celery", "-A", "metabolic_ninja.tasks", "worker", "--loglevel=info"]
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "4000m"
+      - name: redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+        command: ["redis-server", "--save 900 1", "--save 300 10"]
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: "/data"
+            name: metabolic-ninja-staging
+      - name: flower
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5555
+        env:
+        - name: REDIS_HOST
+          value: localhost:6379
+        - name: FLOWER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: FLOWER_USERNAME
+        - name: FLOWER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: FLOWER_PASSWORD
+        - name: WORKER_CONCURRENCY
+          value: "4"
+        command: ["celery", "flower", "-A", "metabolic_ninja", "--broker=redis://localhost:6379/0", "--basic_auth=$(FLOWER_USERNAME):$(FLOWER_PASSWORD)"]
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+      - name: disk-usage
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        command: ["python", "-m", "disk_usage.main"]
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: "/data"
+            name: metabolic-ninja-staging
+      volumes:
+        - name: metabolic-ninja-staging
+          persistentVolumeClaim:
+           claimName: metabolic-ninja-staging
