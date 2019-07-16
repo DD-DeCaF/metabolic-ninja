@@ -82,8 +82,8 @@ spec:
           value: src/metabolic_ninja/wsgi.py
         - name: ALLOWED_ORIGINS
           value: https://caffeine.dd-decaf.eu,https://staging.dd-decaf.eu,http://localhost:4200
-        - name: REDIS_HOST
-          value: localhost:6379
+        - name: RABBITMQ_HOST
+          value: localhost
         - name: MODEL_STORAGE_API
           value: http://model-storage-staging/model-storage
         - name: IAM_API
