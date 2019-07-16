@@ -24,7 +24,7 @@ services:
     - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
     - SENTRY_DSN=${SENTRY_DSN}
     - REDIS_HOST=${REDIS_HOST:-redis:6379}
-    - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/mstorage}
+    - MODEL_STORAGE_API=${MODEL_STORAGE_API:-https://api-staging.dd-decaf.eu/model-storage}
     - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     - POSTGRES_PORT=${POSTGRES_PORT:-5432}
     - POSTGRES_DB_NAME=${POSTGRES_DB_NAME:-metabolic_ninja}
