@@ -16,11 +16,13 @@
 
 set -xeu
 
-if [ "${TRAVIS_BRANCH}" = "devel" ]; then
-  DEPLOYMENT=metabolic-ninja-staging
+if [ "${TRAVIS_BRANCH}" = "master" ]; then
+  kubectl set image deployment/metabolic-ninja-production web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+elif [ "${TRAVIS_BRANCH}" = "devel" ]; then
+  kubectl set image deployment/metabolic-ninja-staging web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+  kubectl set image deployment/metabolic-ninja-staging disk-usage=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+  kubectl set image deployment/metabolic-ninja-worker-staging worker=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
 else
   echo "Skipping deployment for branch ${TRAVIS_BRANCH}"
   exit 0
 fi
-
-kubectl set image deployment/${DEPLOYMENT} web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}

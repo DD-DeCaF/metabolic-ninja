@@ -127,12 +127,65 @@ spec:
             cpu: "10m"
           limits:
             cpu: "2000m"
+      - name: rabbitmq
+        image: rabbitmq:3.7
+        ports:
+        - containerPort: 5672
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: "/var/lib/rabbitmq"
+            name: metabolic-ninja-staging
+      - name: disk-usage
+        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
+        command: ["python", "-m", "disk_usage.main"]
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: metabolic-ninja-staging
+              key: SENTRY_DSN
+        resources:
+          requests:
+            cpu: "10m"
+          limits:
+            cpu: "2000m"
+        volumeMounts:
+          - mountPath: "/var/lib/rabbitmq"
+            name: metabolic-ninja-staging
+      volumes:
+        - name: metabolic-ninja-staging
+          persistentVolumeClaim:
+           claimName: metabolic-ninja-staging
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabolic-ninja-worker-staging
+spec:
+  selector:
+    matchLabels:
+      app: metabolic-ninja-worker
+      env: staging
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: metabolic-ninja-worker
+        env: staging
+    spec:
+      containers:
       - name: worker
         image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
         imagePullPolicy: Always
         env:
         - name: RABBITMQ_HOST
-          value: localhost
+          value: metabolic-ninja-staging
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
@@ -165,36 +218,3 @@ spec:
             cpu: "10m"
           limits:
             cpu: "4000m"
-      - name: rabbitmq
-        image: rabbitmq:3.7
-        ports:
-        - containerPort: 5672
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
-        # volumeMounts:
-        #   - mountPath: "/var/lib/rabbitmq"
-        #     name: metabolic-ninja-staging
-      - name: disk-usage
-        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:devel
-        command: ["python", "-m", "disk_usage.main"]
-        env:
-        - name: SENTRY_DSN
-          valueFrom:
-            secretKeyRef:
-              name: metabolic-ninja-staging
-              key: SENTRY_DSN
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
-        volumeMounts:
-          - mountPath: "/var/lib/rabbitmq"
-            name: metabolic-ninja-staging
-      volumes:
-        - name: metabolic-ninja-staging
-          persistentVolumeClaim:
-           claimName: metabolic-ninja-staging

@@ -11,3 +11,7 @@ spec:
     protocol: TCP
     port: 80
     targetPort: 8000
+  - name: rabbitmq
+    protocol: TCP
+    port: 5672
+    targetPort: 5672
