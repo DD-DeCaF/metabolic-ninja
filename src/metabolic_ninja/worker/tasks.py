@@ -179,6 +179,8 @@ def cofactor_swap(job, pathway, method):
 
 def _collect_results(results, reactions, metabolites, container):
     for row in results:
+        # Move the full reaction and metabolite definitions in a dict keyed by ID to
+        # avoid duplicate definitions.
         for reaction in row.get("heterologous_reactions", []):
             reactions[reaction.id] = reaction_to_dict(reaction)
             for metabolite in reaction.metabolites:
@@ -188,22 +190,21 @@ def _collect_results(results, reactions, metabolites, container):
         for metabolite in row.get("exotic_cofactors", []):
             metabolites[metabolite.id] = metabolite_to_dict(metabolite)
 
-        container.append(
-            {
-                "method": row["method"],
-                "knockouts": [t.id for t in row.get("knockouts", [])],
-                "manipulations": row.get("manipulations", []),
-                "heterologous_reactions": [
-                    r.id for r in row.get("heterologous_reactions", [])
-                ],
-                "synthetic_reactions": [
-                    r.id for r in row.get("synthetic_reactions", [])
-                ],
-                "exotic_cofactors": [
-                    m.id for m in row.get("exotic_cofactors", [])
-                ],
-            }
-        )
+        # Replace reaction/metabolite references with their IDs in the actual results
+        row["knockouts"] = [t.id for t in row.get("knockouts", [])]
+        row["manipulations"] = row.get("manipulations", [])
+        row["heterologous_reactions"] = [
+            r.id for r in row.get("heterologous_reactions", [])
+        ]
+        row["synthetic_reactions"] = [
+            r.id for r in row.get("synthetic_reactions", [])
+        ]
+        row["exotic_cofactors"] = [
+            m.id for m in row.get("exotic_cofactors", [])
+        ]
+
+        # Add the full result row to the appropriate container (based on method).
+        container.append(row)
 
 
 def _notify(job):
