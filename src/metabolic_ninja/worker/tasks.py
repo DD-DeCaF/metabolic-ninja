@@ -59,20 +59,41 @@ def design(connection, channel, delivery_tag, body, ack_message):
 
         for index, pathway in enumerate(pathways, start=1):
             # Differential FVA
-            logger.debug(f"Starting task: Differential FVA (pathway {index}/{len(pathways)})")
+            logger.debug(
+                f"Starting task: Differential FVA (pathway {index}/{len(pathways)})"
+            )
             results = diff_fva(job, pathway, "PathwayPredictor+DifferentialFVA")
-            _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["diff_fva"])
+            _collect_results(
+                results,
+                optimization_results["reactions"],
+                optimization_results["metabolites"],
+                optimization_results["diff_fva"],
+            )
 
             # OptGene
             # FIXME (Moritz): Disabled for fast test on staging.
             # logger.debug(f"Starting task: OptGene (pathway {index}/{len(pathways)})")
             # results = opt_gene(pathway, job.model, "PathwayPredictor+OptGene")
-            # _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["opt_gene"])
+            # _collect_results(
+            #     results,
+            #     optimization_results["reactions"],
+            #     optimization_results["metabolites"],
+            #     optimization_results["opt_gene"],
+            # )
 
             # Cofactor Swap Optimization
-            logger.debug(f"Starting task: Cofactor Swap (pathway {index}/{len(pathways)})")
-            results = cofactor_swap(job, pathway, "PathwayPredictor+CofactorSwap")
-            _collect_results(results, optimization_results["reactions"], optimization_results["metabolites"], optimization_results["cofactor_swap"])
+            logger.debug(
+                f"Starting task: Cofactor Swap (pathway {index}/{len(pathways)})"
+            )
+            results = cofactor_swap(
+                job, pathway, "PathwayPredictor+CofactorSwap"
+            )
+            _collect_results(
+                results,
+                optimization_results["reactions"],
+                optimization_results["metabolites"],
+                optimization_results["cofactor_swap"],
+            )
 
         # Save the results
         job.save(status="SUCCESS", result=optimization_results)
@@ -146,7 +167,9 @@ def cofactor_swap(job, pathway, method):
     logger.debug("Cofactor swap: Optimizing")
     designs = designer.cofactor_swap_optimization(pathway, job.model)
     logger.debug("Cofactor swap: Evaluating")
-    results = designer.evaluate_cofactor_swap(designs, pathway, job.model, method)
+    results = designer.evaluate_cofactor_swap(
+        designs, pathway, job.model, method
+    )
     # TODO (Moritz Beber): We disable the evaluation of exotic co-factors for
     #  now. As there is an unresolved bug that will get in the way of the user
     #  optimizeview.
