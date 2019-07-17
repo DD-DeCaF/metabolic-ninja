@@ -19,9 +19,20 @@ set -xeu
 if [ "${TRAVIS_BRANCH}" = "master" ]; then
   kubectl set image deployment/metabolic-ninja-production web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
 elif [ "${TRAVIS_BRANCH}" = "devel" ]; then
-  kubectl set image deployment/metabolic-ninja-staging web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
-  kubectl set image deployment/metabolic-ninja-staging disk-usage=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
-  kubectl set image deployment/metabolic-ninja-worker-staging worker=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+  # Redeployment of metabolic-ninja requires threading a bit more carefully than
+  # normally.
+
+  # First disconnect and take down the workers completely. This way, rabbitmq will note
+  # that workers with any unacknowledged messages (meaning jobs in progress) have
+  # disconnected and will requeue those messages when workers come back up.
+  kubectl delete deployment metabolic-ninja-worker-staging
+
+  # Now soft redeploy the web + rabbitmq pod.
+  kubectl set image deployment/metabolic-ninja-staging web=${IMAGE_REPO}:${TRAVIS_COMMIT::12} disk-usage=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+
+  # Finally, redeploy the workers with the new version. RabbitMQ will resend any aborted
+  # jobs. They'll have to be restarted from scratch, but will at least not become stale.
+  kubectl apply -Rf deployment/staging/deployment.yml
 else
   echo "Skipping deployment for branch ${TRAVIS_BRANCH}"
   exit 0
