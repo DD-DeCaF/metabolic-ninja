@@ -41,13 +41,9 @@ def design(connection, channel, delivery_tag, body, ack_message):
 
         logger.debug("Starting task: Find product")
         product = find_product(job)
-        logger.debug(f"Task finished; found product: {product}")
 
         logger.debug("Starting task: Find pathways")
         pathways = find_pathways(job, product)
-        logger.debug(
-            f"Task finished: Find pathways, found {len(pathways)} pathways"
-        )
 
         optimization_results = {
             "diff_fva": [],
