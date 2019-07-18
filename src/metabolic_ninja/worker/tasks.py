@@ -55,6 +55,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
             "cofactor_swap": [],
             "reactions": {},
             "metabolites": {},
+            "target": pathways[0].product.id if len(pathways) else "",
         }
 
         for index, pathway in enumerate(pathways, start=1):
