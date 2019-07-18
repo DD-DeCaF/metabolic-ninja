@@ -7,3 +7,4 @@ flake8
 flake8-docstrings
 isort
 safety
+ipython
