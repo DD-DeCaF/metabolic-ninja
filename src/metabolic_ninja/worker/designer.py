@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import logging
-import uuid
+from uuid import uuid4
 
 import cameo.core.target
 from cameo.strain_design import DifferentialFVA, OptGene
@@ -109,7 +109,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
             manipulations = set(design_result.targets).difference(knockouts)
             results.append(
                 {
-                    "id": str(uuid.uuid4()),
+                    "id": str(uuid4()),
                     "knockouts": list(knockouts),
                     "manipulations": [
                         manipulation_helper(t) for t in manipulations
@@ -183,7 +183,7 @@ def evaluate_opt_gene(designs, pathway, model, method):
                 }
                 results.append(
                     {
-                        "id": str(uuid.uuid4()),
+                        "id": str(uuid4()),
                         "knockouts": list(knockouts),
                         "heterologous_reactions": pathway.reactions,
                         "synthetic_reactions": find_synthetic_reactions(
@@ -275,7 +275,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             )
         results.append(
             {
-                "id": str(uuid.uuid4()),
+                "id": str(uuid4()),
                 "manipulations": manipulations,
                 "heterologous_reactions": pathway.reactions,
                 "synthetic_reactions": find_synthetic_reactions(pathway),
