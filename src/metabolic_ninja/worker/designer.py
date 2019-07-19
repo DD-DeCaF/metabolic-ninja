@@ -16,6 +16,7 @@
 import logging
 
 import cameo.core.target
+import uuid
 from cameo.strain_design import DifferentialFVA, OptGene
 from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
@@ -108,6 +109,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
             manipulations = set(design_result.targets).difference(knockouts)
             results.append(
                 {
+                    "id": str(uuid.uuid4()),
                     "knockouts": list(knockouts),
                     "manipulations": [
                         manipulation_helper(t) for t in manipulations
@@ -181,6 +183,7 @@ def evaluate_opt_gene(designs, pathway, model, method):
                 }
                 results.append(
                     {
+                        "id": str(uuid.uuid4()),
                         "knockouts": list(knockouts),
                         "heterologous_reactions": pathway.reactions,
                         "synthetic_reactions": find_synthetic_reactions(
@@ -272,6 +275,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
             )
         results.append(
             {
+                "id": str(uuid.uuid4()),
                 "manipulations": manipulations,
                 "heterologous_reactions": pathway.reactions,
                 "synthetic_reactions": find_synthetic_reactions(pathway),
