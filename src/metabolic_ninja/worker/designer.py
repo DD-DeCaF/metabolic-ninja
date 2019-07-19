@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import logging
+import uuid
 
 import cameo.core.target
-import uuid
 from cameo.strain_design import DifferentialFVA, OptGene
 from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
