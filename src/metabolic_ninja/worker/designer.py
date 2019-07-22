@@ -65,7 +65,7 @@ def differential_fva_optimization(pathway, model):
         try:
             designs = predictor.run(progress=False)
         except ZeroDivisionError as error:
-            logger.warning(
+            logger.error(
                 "Encountered the following error in DiffFVA.", exc_info=error
             )
             designs = None
