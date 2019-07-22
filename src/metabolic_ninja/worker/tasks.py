@@ -113,7 +113,6 @@ def design(connection, channel, delivery_tag, body, ack_message):
 def find_product(job):
     # Find the product name via the cameo designer. In a future far, far away
     # this should be a call to a web service.
-    # TODO: update db state
     return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(
         job.product_name, job.source
     )
@@ -121,7 +120,6 @@ def find_product(job):
 
 @task
 def find_pathways(job, product):
-    # TODO: update db state
     predictor = cameo.strain_design.pathway_prediction.PathwayPredictor(
         job.model, universal_model=job.source
     )
