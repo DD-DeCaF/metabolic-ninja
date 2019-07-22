@@ -23,7 +23,7 @@ import pika
 
 def submit_job(**kwargs):
     """Submit a new job to the message queue."""
-    message = json.dumps(kwargs)
+    message = json.dumps(kwargs, separators=(",", ":"))
     with pika.BlockingConnection(
         pika.ConnectionParameters(host=os.environ["RABBITMQ_HOST"])
     ) as connection:
