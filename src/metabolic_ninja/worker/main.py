@@ -70,7 +70,7 @@ sentry_sdk.integrations.logging.ignore_logger(
 )
 
 # Whenever a job is received, the work on it will be started in a new thread. This is
-# to allow the RabbitMQ i/o loop to do its thing (like sending hearbeats to the server
+# to allow the RabbitMQ i/o loop to do its thing (like sending heartbeats to the server
 # to keep the connection alive). Started threads are stored in this list, so that we can
 # wait for the threads to complete when terminating the application.
 worker_threads = []
