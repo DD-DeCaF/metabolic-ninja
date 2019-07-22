@@ -34,6 +34,6 @@ def submit_job(**kwargs):
                 routing_key="jobs",
                 body=message,
                 properties=pika.BasicProperties(
-                    delivery_mode=2  # Makes message persistent
+                    delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
                 ),
             )
