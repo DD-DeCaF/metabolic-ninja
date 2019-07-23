@@ -37,8 +37,10 @@ def db_session():
     )
     Session = sessionmaker(bind=engine)
     session = Session()
-    yield session
-    session.close()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 class Job:
