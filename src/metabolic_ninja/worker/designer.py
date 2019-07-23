@@ -234,8 +234,15 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
         source_b = model_tmp.metabolites.get_by_id(source_pair[1])
         target_a = model_tmp.metabolites.get_by_id(target_pair[0])
         target_b = model_tmp.metabolites.get_by_id(target_pair[1])
+        reaction_targets = {}
         for rxn_id in design.targets:
             rxn = model_tmp.reactions.get_by_id(rxn_id)
+            reaction_targets[rxn_id] = {
+                "name": rxn.name,
+                "subsystem": rxn.subsystem,
+                "gpr": rxn.gene_reaction_rule,
+                "definition_of_stoichiometry": rxn.build_reaction_string(True)
+            }
             metabolites = rxn.metabolites
             # Swap from source to target co-factors.
             if source_a in metabolites:
@@ -284,6 +291,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
                 "product": prod_flux,
                 "biomass": growth,
                 "method": method,
+                "reaction_targets": reaction_targets
             }
         )
     return results
