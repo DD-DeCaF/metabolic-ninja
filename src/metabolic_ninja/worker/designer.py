@@ -22,7 +22,9 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
     product_yield,
 )
-from cameo.strain_design.heuristic.evolutionary_based import CofactorSwapOptimization
+from cameo.strain_design.heuristic.evolutionary_based import (
+    CofactorSwapOptimization,
+)
 from cobra.exceptions import OptimizationError
 from numpy import isnan
 
@@ -79,6 +81,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
     logger.info(
         f"Evaluating {len(designs) - 1} differential FVA surface points."
     )
+    table = designs.nth_panel(0)
     results = []
     designs = list(designs)
     with model:
@@ -87,6 +90,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
         # original five points remain. The first point in order represents
         # maximum production and zero growth. We ignore the point of lowest
         # production (the last one in order).
+        reaction_targets = {}
         for design_result in designs[:-1]:
             with model:
                 design_result.apply(model)
@@ -106,14 +110,21 @@ def evaluate_diff_fva(designs, pathway, model, method):
                 for r in design_result.targets
                 if isinstance(r, cameo.core.target.ReactionKnockoutTarget)
             }
-            manipulations = set(design_result.targets).difference(knockouts)
+            manipulations = [
+                manipulation_helper(t)
+                for t in set(design_result.targets).difference(knockouts)
+            ]
+            reaction_targets.update(
+                get_target_data(model, table, manipulations, False)
+            )
+            reaction_targets.update(
+                get_target_data(model, table, list(knockouts), True)
+            )
             results.append(
                 {
                     "id": str(uuid4()),
                     "knockouts": list(knockouts),
-                    "manipulations": [
-                        manipulation_helper(t) for t in manipulations
-                    ],
+                    "manipulations": manipulations,
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": find_synthetic_reactions(pathway),
                     "fitness": bpcy,
@@ -121,6 +132,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     "product": production,
                     "biomass": growth,
                     "method": method,
+                    "targets": reaction_targets,
                 }
             )
     return results
@@ -241,7 +253,7 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
                 "name": rxn.name,
                 "subsystem": rxn.subsystem,
                 "gpr": rxn.gene_reaction_rule,
-                "definition_of_stoichiometry": rxn.build_reaction_string(True)
+                "definition_of_stoichiometry": rxn.build_reaction_string(True),
             }
             metabolites = rxn.metabolites
             # Swap from source to target co-factors.
@@ -291,7 +303,28 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
                 "product": prod_flux,
                 "biomass": growth,
                 "method": method,
-                "reaction_targets": reaction_targets
+                "targets": reaction_targets,
             }
         )
     return results
+
+
+def get_target_data(model, table, targets, knockout):
+    result = {}
+    for t in targets:
+        rxn_id = t.id if knockout else t["id"]
+        rxn = model.reactions.get_by_id(rxn_id)
+        result[rxn_id] = {
+            "name": rxn.name,
+            "subsystem": rxn.subsystem,
+            "gpr": rxn.gene_reaction_rule,
+            "definition_of_stoichiometry": rxn.build_reaction_string(True),
+            "flux_reversal": bool(
+                table[table.reaction == rxn_id].flux_reversal.values[0]
+            ),
+            "suddenly_essential": bool(
+                table[table.reaction == rxn_id].suddenly_essential.values[0]
+            ),
+            "knockout": knockout,
+        }
+    return result
