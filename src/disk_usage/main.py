@@ -35,28 +35,27 @@ def handle_signal(sig, frame):
     sys.exit(0)
 
 
-logging.config.dictConfig({
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+logging.config.dictConfig(
+    {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {
+                "format": "%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
+            }
         },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        "handlers": {
+            "console": {
+                "level": "DEBUG",
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+            }
         },
-    },
-    'root': {
-        'level': 'DEBUG',
-        'handlers': ['console'],
-    },
-})
+        "root": {"level": "DEBUG", "handlers": ["console"]},
+    }
+)
 logger = logging.getLogger("disk-usage")
-sentry_sdk.init(os.environ['SENTRY_DSN'])
+sentry_sdk.init(os.environ["SENTRY_DSN"])
 signal.signal(signal.SIGTERM, handle_signal)
 
 

@@ -183,7 +183,7 @@ def manipulation_helper(target):
     result = {
         "id": target.id,
         "score": target.fold_change,
-        "value": target._value
+        "value": target._value,
     }
     if isinstance(target, ReactionInversionTarget):
         result["direction"] = "invert"
