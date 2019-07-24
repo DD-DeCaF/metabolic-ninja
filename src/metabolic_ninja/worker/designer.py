@@ -22,9 +22,7 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
     product_yield,
 )
-from cameo.strain_design.heuristic.evolutionary_based import (
-    CofactorSwapOptimization,
-)
+from cameo.strain_design.heuristic.evolutionary_based import CofactorSwapOptimization
 from cobra.exceptions import OptimizationError
 from numpy import isnan
 
