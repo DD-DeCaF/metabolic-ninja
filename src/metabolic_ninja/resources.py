@@ -20,9 +20,10 @@ import logging
 import os
 
 import requests
-from flask import g
+from flask import g, make_response
 from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
+from pandas import DataFrame
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
@@ -185,6 +186,147 @@ class ProductsResource(MethodResource):
         return PRODUCT_LIST
 
 
+class PathwayResource(MethodResource):
+    def get(self, job_id, pathway_id):
+        job_id = int(job_id)
+        try:
+            job = (
+                DesignJob.query.filter(DesignJob.id == job_id)
+                .filter(
+                    DesignJob.project_id.in_(g.jwt_claims["prj"])
+                    | DesignJob.project_id.is_(None)
+                )
+                .one()
+            )
+        except NoResultFound:
+            return (
+                {"error": f"Cannot find any design job with id {job_id}."},
+                404,
+            )
+        else:
+            if job.is_complete():
+                status = 200
+            else:
+                status = 202
+            pathway = next(
+                (
+                    x
+                    for x in job.result["diff_fva"]
+                    + job.result["opt_gene"]
+                    + job.result["cofactor_swap"]
+                    if x["id"] == pathway_id
+                ),
+                None,
+            )
+            if not pathway:
+                return (
+                    {"error": f"Cannot find any job result with id {pathway_id}."},
+                    404,
+                )
+            result = get_tabular_data(pathway)
+            response = make_response(result, status)
+            response.headers["Content-Type"] = "text/csv"
+            response.headers["Content-Disposition"] = "attachment"
+            return response
+
+
+def get_tabular_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    manipulations = pathway["manipulations"]
+    if pathway["method"] == "PathwayPredictor+DifferentialFVA":
+        for t in manipulations:
+            rxn_id = t["id"]
+            rxn_data = {"reaction_target": rxn_id}
+            rxn_data["reaction_name"] = targets[rxn_id]["name"]
+            rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+            rxn_data["gpr"] = targets[rxn_id]["gpr"]
+            rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+                "definition_of_stoichiometry"
+            ]
+            rxn_data["new_flux_level"] = t["value"]
+            rxn_data["score"] = t["score"]
+            rxn_data["knockout"] = targets[rxn_id]["knockout"]
+            rxn_data["flux_reversal"] = targets[rxn_id]["flux_reversal"]
+            rxn_data["suddenly_essential"] = targets[rxn_id][
+                "suddenly_essential"
+            ]
+            result.append(rxn_data)
+        df = DataFrame(
+            result,
+            columns=[
+                "reaction_target",
+                "reaction_name",
+                "subsystem",
+                "gpr",
+                "definition_of_stoichiometry",
+                "new_flux_level",
+                "score",
+                "knockout",
+                "flux_reversal",
+                "suddenly_essential",
+            ],
+        )
+    elif pathway["method"] == "PathwayPredictor+OptGene":
+        for gene_id in targets:
+            for t in targets[gene_id]:
+                gene_data = {"gene_target": gene_id}
+                gene_data["gene_name"] = t["name"]
+                gene_data["reaction_id"] = t["reaction_id"]
+                gene_data["reaction_name"] = t["reaction_name"]
+                gene_data["subsystem"] = t["subsystem"]
+                gene_data["gpr"] = t["gpr"]
+                gene_data["desinition_of_stoichiometry"] = t[
+                    "desinition_of_stoichiometry"
+                ]
+                result.append(rxn_data)
+        df = DataFrame(
+            result,
+            columns=[
+                "gene_target",
+                "gene_name",
+                "reaction_id",
+                "reaction_name",
+                "subsystem",
+                "gpr",
+                "definition_of_stoichiometry",
+            ],
+        )
+    elif pathway["method"] == "PathwayPredictor+CofactorSwap":
+        for t in manipulations:
+            rxn_id = t["id"]
+            rxn_data = {"reaction_target": rxn_id}
+            swapped_from = t["from"]
+            swapped_to = t["to"]
+            rxn_data["swapped_cofactors"] = "; ".join(
+                [
+                    swapped_from[i] + " -> " + swapped_to[i]
+                    for i in range(len(swapped_from))
+                ]
+            )
+            rxn_data["reaction_name"] = targets[rxn_id]["name"]
+            rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+            rxn_data["gpr"] = targets[rxn_id]["gpr"]
+            rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+                "definition_of_stoichiometry"
+            ]
+            result.append(rxn_data)
+        df = DataFrame(
+            result,
+            columns=[
+                "reaction_target",
+                "reaction_name",
+                "swapped_cofactors",
+                "subsystem",
+                "gpr",
+                "definition_of_stoichiometry",
+            ],
+        )
+    else:
+        raise ValueError(f"Unknown method '{pathway.method}'.")
+    return df.to_csv()
+
+
 def init_app(app):
     """Register API resources on the provided Flask application."""
 
@@ -195,4 +337,7 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register("/predictions", PredictionJobsResource)
     register("/predictions/<string:job_id>", PredictionJobResource)
+    register(
+        "/predictions/<string:job_id>/<string:pathway_id>", PathwayResource
+    )
     register("/products", ProductsResource)
