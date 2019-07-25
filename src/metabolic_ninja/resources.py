@@ -186,8 +186,8 @@ class ProductsResource(MethodResource):
         return PRODUCT_LIST
 
 
-class PathwayResource(MethodResource):
-    def get(self, job_id, pathway_id):
+class JobRowResource(MethodResource):
+    def get(self, job_id, row_id):
         job_id = int(job_id)
         try:
             job = (
@@ -214,13 +214,13 @@ class PathwayResource(MethodResource):
                     for x in job.result["diff_fva"]
                     + job.result["opt_gene"]
                     + job.result["cofactor_swap"]
-                    if x["id"] == pathway_id
+                    if x["id"] == row_id
                 ),
                 None,
             )
             if not pathway:
                 return (
-                    {"error": f"Cannot find any job result with id {pathway_id}."},
+                    {"error": f"Cannot find any row with id {row_id} in job {job_id}."},
                     404,
                 )
             result = get_tabular_data(pathway)
@@ -338,6 +338,6 @@ def init_app(app):
     register("/predictions", PredictionJobsResource)
     register("/predictions/<string:job_id>", PredictionJobResource)
     register(
-        "/predictions/<string:job_id>/<string:pathway_id>", PathwayResource
+        "/predictions/<string:job_id>/<string:row_id>", JobRowResource
     )
     register("/products", ProductsResource)
