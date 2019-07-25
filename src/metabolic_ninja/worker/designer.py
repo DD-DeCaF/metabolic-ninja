@@ -192,12 +192,12 @@ def evaluate_opt_gene(designs, pathway, model, method):
                     if isinstance(g, cameo.core.target.GeneKnockoutTarget)
                 }
                 gene_targets = {}
-                for t in list(knockouts):
-                    gene_id = t.id
+                for target in knockouts:
+                    gene_id = target.id
                     gene = model.genes.get_by_id(gene_id)
                     gene_targets[gene_id] = []
-                    for r in gene.reactions:
-                        rxn_id = (r.id,)
+                    for reaction_target in gene.reactions:
+                        rxn_id = reaction_target.id
                         rxn = model.reactions.get_by_id(rxn_id)
                         gene_targets[gene_id].append(
                             {
@@ -337,12 +337,8 @@ def get_target_data(model, table, targets, knockout):
             "subsystem": rxn.subsystem,
             "gpr": rxn.gene_reaction_rule,
             "definition_of_stoichiometry": rxn.build_reaction_string(True),
-            "flux_reversal": bool(
-                table[table.reaction == rxn_id].flux_reversal.values[0]
-            ),
-            "suddenly_essential": bool(
-                table[table.reaction == rxn_id].suddenly_essential.values[0]
-            ),
+            "flux_reversal": bool(table.at[rxn_id, "flux_reversal"]),
+            "suddenly_essential": bool(table.at[rxn_id, "suddenly_essential"]),
             "knockout": knockout,
         }
     return result
