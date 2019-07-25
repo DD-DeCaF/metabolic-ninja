@@ -276,8 +276,8 @@ def get_tabular_data(pathway):
                 gene_data["reaction_name"] = t["reaction_name"]
                 gene_data["subsystem"] = t["subsystem"]
                 gene_data["gpr"] = t["gpr"]
-                gene_data["desinition_of_stoichiometry"] = t[
-                    "desinition_of_stoichiometry"
+                gene_data["definition_of_stoichiometry"] = t[
+                    "definition_of_stoichiometry"
                 ]
                 result.append(rxn_data)
         df = DataFrame(

@@ -206,9 +206,8 @@ def evaluate_opt_gene(designs, pathway, model, method):
                                 "reaction_name": rxn.name,
                                 "subsystem": rxn.subsystem,
                                 "gpr": rxn.gene_reaction_rule,
-                                "desinition_of_stoichiometry": rxn.build_reaction_string(
-                                    True
-                                ),
+                                "definition_of_stoichiometry":
+                                    rxn.build_reaction_string(True),
                             }
                         )
                 results.append(
