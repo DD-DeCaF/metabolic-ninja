@@ -22,9 +22,7 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
     product_yield,
 )
-from cameo.strain_design.heuristic.evolutionary_based import (
-    CofactorSwapOptimization,
-)
+from cameo.strain_design.heuristic.evolutionary_based import CofactorSwapOptimization
 from cobra.exceptions import OptimizationError
 from numpy import isnan
 
@@ -193,6 +191,26 @@ def evaluate_opt_gene(designs, pathway, model, method):
                     for g in design_result.targets
                     if isinstance(g, cameo.core.target.GeneKnockoutTarget)
                 }
+                gene_targets = {}
+                for t in list(knockouts):
+                    gene_id = t.id
+                    gene = model.genes.get_by_id(gene_id)
+                    gene_targets[gene_id] = []
+                    for r in gene.reactions:
+                        rxn_id = (r.id,)
+                        rxn = model.reactions.get_by_id(rxn_id)
+                        gene_targets[gene_id].append(
+                            {
+                                "name": gene.name,
+                                "reaction_id": rxn_id,
+                                "reaction_name": rxn.name,
+                                "subsystem": rxn.subsystem,
+                                "gpr": rxn.gene_reaction_rule,
+                                "desinition_of_stoichiometry": rxn.build_reaction_string(
+                                    True
+                                ),
+                            }
+                        )
                 results.append(
                     {
                         "id": str(uuid4()),
@@ -206,6 +224,7 @@ def evaluate_opt_gene(designs, pathway, model, method):
                         "product": target_flux,
                         "biomass": biomass,
                         "method": method,
+                        "targets": gene_targets,
                     }
                 )
     return results
