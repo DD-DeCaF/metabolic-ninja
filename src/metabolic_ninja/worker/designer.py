@@ -80,14 +80,15 @@ def evaluate_diff_fva(designs, pathway, model, method):
         f"Evaluating {len(designs) - 1} differential FVA surface points."
     )
     results = []
-    designs = list(designs)
     with model:
         pathway.apply(model)
         # The reference point is automatically ignored. Thus four of the
         # original five points remain. The first point in order represents
         # maximum production and zero growth. We ignore the point of lowest
         # production (the last one in order).
-        for design_result in designs[:-1]:
+        reaction_targets = {}
+        for index, design_result in enumerate(list(designs)[:-1]):
+            table = designs.nth_panel(index)
             with model:
                 design_result.apply(model)
                 with model:
@@ -106,14 +107,21 @@ def evaluate_diff_fva(designs, pathway, model, method):
                 for r in design_result.targets
                 if isinstance(r, cameo.core.target.ReactionKnockoutTarget)
             }
-            manipulations = set(design_result.targets).difference(knockouts)
+            manipulations = [
+                manipulation_helper(t)
+                for t in set(design_result.targets).difference(knockouts)
+            ]
+            reaction_targets.update(
+                get_target_data(model, table, manipulations, False)
+            )
+            reaction_targets.update(
+                get_target_data(model, table, list(knockouts), True)
+            )
             results.append(
                 {
                     "id": str(uuid4()),
                     "knockouts": list(knockouts),
-                    "manipulations": [
-                        manipulation_helper(t) for t in manipulations
-                    ],
+                    "manipulations": manipulations,
                     "heterologous_reactions": pathway.reactions,
                     "synthetic_reactions": find_synthetic_reactions(pathway),
                     "fitness": bpcy,
@@ -121,6 +129,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
                     "product": production,
                     "biomass": growth,
                     "method": method,
+                    "targets": reaction_targets,
                 }
             )
     return results
@@ -181,6 +190,25 @@ def evaluate_opt_gene(designs, pathway, model, method):
                     for g in design_result.targets
                     if isinstance(g, cameo.core.target.GeneKnockoutTarget)
                 }
+                gene_targets = {}
+                for target in knockouts:
+                    gene_id = target.id
+                    gene = model.genes.get_by_id(gene_id)
+                    gene_targets[gene_id] = []
+                    for reaction_target in gene.reactions:
+                        rxn_id = reaction_target.id
+                        rxn = model.reactions.get_by_id(rxn_id)
+                        gene_targets[gene_id].append(
+                            {
+                                "name": gene.name,
+                                "reaction_id": rxn_id,
+                                "reaction_name": rxn.name,
+                                "subsystem": rxn.subsystem,
+                                "gpr": rxn.gene_reaction_rule,
+                                "definition_of_stoichiometry":
+                                    rxn.build_reaction_string(True),
+                            }
+                        )
                 results.append(
                     {
                         "id": str(uuid4()),
@@ -194,6 +222,7 @@ def evaluate_opt_gene(designs, pathway, model, method):
                         "product": target_flux,
                         "biomass": biomass,
                         "method": method,
+                        "targets": gene_targets,
                     }
                 )
     return results
@@ -234,8 +263,15 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
         source_b = model_tmp.metabolites.get_by_id(source_pair[1])
         target_a = model_tmp.metabolites.get_by_id(target_pair[0])
         target_b = model_tmp.metabolites.get_by_id(target_pair[1])
+        reaction_targets = {}
         for rxn_id in design.targets:
             rxn = model_tmp.reactions.get_by_id(rxn_id)
+            reaction_targets[rxn_id] = {
+                "name": rxn.name,
+                "subsystem": rxn.subsystem,
+                "gpr": rxn.gene_reaction_rule,
+                "definition_of_stoichiometry": rxn.build_reaction_string(True),
+            }
             metabolites = rxn.metabolites
             # Swap from source to target co-factors.
             if source_a in metabolites:
@@ -284,6 +320,24 @@ def evaluate_cofactor_swap(designs, pathway, model, method):
                 "product": prod_flux,
                 "biomass": growth,
                 "method": method,
+                "targets": reaction_targets,
             }
         )
     return results
+
+
+def get_target_data(model, table, targets, knockout):
+    result = {}
+    for t in targets:
+        rxn_id = t.id if knockout else t["id"]
+        rxn = model.reactions.get_by_id(rxn_id)
+        result[rxn_id] = {
+            "name": rxn.name,
+            "subsystem": rxn.subsystem,
+            "gpr": rxn.gene_reaction_rule,
+            "definition_of_stoichiometry": rxn.build_reaction_string(True),
+            "flux_reversal": bool(table.at[rxn_id, "flux_reversal"]),
+            "suddenly_essential": bool(table.at[rxn_id, "suddenly_essential"]),
+            "knockout": knockout,
+        }
+    return result

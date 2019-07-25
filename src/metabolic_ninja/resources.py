@@ -20,9 +20,10 @@ import logging
 import os
 
 import requests
-from flask import g
+from flask import g, make_response
 from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
+from pandas import DataFrame
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
@@ -185,6 +186,164 @@ class ProductsResource(MethodResource):
         return PRODUCT_LIST
 
 
+class JobRowResource(MethodResource):
+    def get(self, job_id, row_id):
+        job_id = int(job_id)
+        try:
+            job = (
+                DesignJob.query.filter(DesignJob.id == job_id)
+                .filter(
+                    DesignJob.project_id.in_(g.jwt_claims["prj"])
+                    | DesignJob.project_id.is_(None)
+                )
+                .one()
+            )
+        except NoResultFound:
+            return (
+                {"error": f"Cannot find any design job with id {job_id}."},
+                404,
+            )
+        else:
+            if job.is_complete():
+                status = 200
+            else:
+                status = 202
+            pathway = next(
+                (
+                    x
+                    for x in job.result["diff_fva"]
+                    + job.result["opt_gene"]
+                    + job.result["cofactor_swap"]
+                    if x["id"] == row_id
+                ),
+                None,
+            )
+            if not pathway:
+                return (
+                    {"error": f"Cannot find any row with id {row_id} in job {job_id}."},
+                    404,
+                )
+            result = get_tabular_data(pathway)
+            response = make_response(result, status)
+            response.headers["Content-Type"] = "text/csv"
+            response.headers["Content-Disposition"] = "attachment"
+            return response
+
+
+def get_tabular_data(pathway):
+    if pathway["method"] == "PathwayPredictor+DifferentialFVA":
+        df = get_diff_fva_data(pathway)
+    elif pathway["method"] == "PathwayPredictor+OptGene":
+        df = get_opt_gene_data(pathway)
+    elif pathway["method"] == "PathwayPredictor+CofactorSwap":
+        df = get_cofactor_swap_data(pathway)
+    else:
+        raise ValueError(f"Unknown method '{pathway['method']}'.")
+    return df.to_csv()
+
+
+def get_diff_fva_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    manipulations = pathway["manipulations"]
+    for target in manipulations:
+        rxn_id = target["id"]
+        rxn_data = {"reaction_target": rxn_id}
+        rxn_data["reaction_name"] = targets[rxn_id]["name"]
+        rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+        rxn_data["gpr"] = targets[rxn_id]["gpr"]
+        rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+            "definition_of_stoichiometry"
+        ]
+        rxn_data["new_flux_level"] = target["value"]
+        rxn_data["score"] = target["score"]
+        rxn_data["knockout"] = targets[rxn_id]["knockout"]
+        rxn_data["flux_reversal"] = targets[rxn_id]["flux_reversal"]
+        rxn_data["suddenly_essential"] = targets[rxn_id][
+            "suddenly_essential"
+        ]
+        result.append(rxn_data)
+    return DataFrame(
+        result,
+        columns=[
+            "reaction_target",
+            "reaction_name",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+            "new_flux_level",
+            "score",
+            "knockout",
+            "flux_reversal",
+            "suddenly_essential",
+        ],
+    )
+
+
+def get_opt_gene_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    for gene_id in targets:
+        for target in targets[gene_id]:
+            gene_data = {"gene_target": gene_id}
+            gene_data["gene_name"] = target["name"]
+            gene_data["reaction_id"] = target["reaction_id"]
+            gene_data["reaction_name"] = target["reaction_name"]
+            gene_data["subsystem"] = target["subsystem"]
+            gene_data["gpr"] = target["gpr"]
+            gene_data["definition_of_stoichiometry"] = target[
+                "definition_of_stoichiometry"
+            ]
+            result.append(gene_data)
+    return DataFrame(
+        result,
+        columns=[
+            "gene_target",
+            "gene_name",
+            "reaction_id",
+            "reaction_name",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+        ],
+    )
+
+
+def get_cofactor_swap_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    manipulations = pathway["manipulations"]
+    for target in manipulations:
+        rxn_id = target["id"]
+        rxn_data = {"reaction_target": rxn_id}
+        swapped_from = target["from"]
+        swapped_to = target["to"]
+        rxn_data["swapped_cofactors"] = "; ".join(
+            [
+                swapped_from[i] + " -> " + swapped_to[i]
+                for i in range(len(swapped_from))
+            ]
+        )
+        rxn_data["reaction_name"] = targets[rxn_id]["name"]
+        rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+        rxn_data["gpr"] = targets[rxn_id]["gpr"]
+        rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+            "definition_of_stoichiometry"
+        ]
+        result.append(rxn_data)
+    return DataFrame(
+        result,
+        columns=[
+            "reaction_target",
+            "reaction_name",
+            "swapped_cofactors",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+        ],
+    )
+
+
 def init_app(app):
     """Register API resources on the provided Flask application."""
 
@@ -195,4 +354,7 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register("/predictions", PredictionJobsResource)
     register("/predictions/<string:job_id>", PredictionJobResource)
+    register(
+        "/predictions/<string:job_id>/<string:row_id>", JobRowResource
+    )
     register("/products", ProductsResource)

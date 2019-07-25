@@ -70,7 +70,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
             # OptGene
             # FIXME (Moritz): Disabled for fast test on staging.
             # logger.debug(f"Starting task: OptGene (pathway {index}/{len(pathways)})")
-            # results = opt_gene(pathway, job.model, "PathwayPredictor+OptGene")
+            # results = opt_gene(job, pathway, "PathwayPredictor+OptGene")
             # _collect_results(
             #     results,
             #     optimization_results["reactions"],
