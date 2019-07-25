@@ -79,9 +79,7 @@ def evaluate_diff_fva(designs, pathway, model, method):
     logger.info(
         f"Evaluating {len(designs) - 1} differential FVA surface points."
     )
-    table = designs.nth_panel(0)
     results = []
-    designs = list(designs)
     with model:
         pathway.apply(model)
         # The reference point is automatically ignored. Thus four of the
@@ -89,7 +87,8 @@ def evaluate_diff_fva(designs, pathway, model, method):
         # maximum production and zero growth. We ignore the point of lowest
         # production (the last one in order).
         reaction_targets = {}
-        for design_result in designs[:-1]:
+        for index, design_result in enumerate(list(designs)[:-1]):
+            table = designs.nth_panel(index)
             with model:
                 design_result.apply(model)
                 with model:
