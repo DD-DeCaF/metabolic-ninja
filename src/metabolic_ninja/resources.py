@@ -231,100 +231,117 @@ class JobRowResource(MethodResource):
 
 
 def get_tabular_data(pathway):
+    if pathway["method"] == "PathwayPredictor+DifferentialFVA":
+        df = get_diff_fva_data(pathway)
+    elif pathway["method"] == "PathwayPredictor+OptGene":
+        df = get_opt_gene_data(pathway)
+    elif pathway["method"] == "PathwayPredictor+CofactorSwap":
+        df = get_cofactor_swap_data(pathway)
+    else:
+        raise ValueError(f"Unknown method '{pathway['method']}'.")
+    return df.to_csv()
+
+
+def get_diff_fva_data(pathway):
     result = []
     targets = pathway["targets"]
     manipulations = pathway["manipulations"]
-    if pathway["method"] == "PathwayPredictor+DifferentialFVA":
-        for t in manipulations:
-            rxn_id = t["id"]
-            rxn_data = {"reaction_target": rxn_id}
-            rxn_data["reaction_name"] = targets[rxn_id]["name"]
-            rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
-            rxn_data["gpr"] = targets[rxn_id]["gpr"]
-            rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+    for target in manipulations:
+        rxn_id = target["id"]
+        rxn_data = {"reaction_target": rxn_id}
+        rxn_data["reaction_name"] = targets[rxn_id]["name"]
+        rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+        rxn_data["gpr"] = targets[rxn_id]["gpr"]
+        rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+            "definition_of_stoichiometry"
+        ]
+        rxn_data["new_flux_level"] = target["value"]
+        rxn_data["score"] = target["score"]
+        rxn_data["knockout"] = targets[rxn_id]["knockout"]
+        rxn_data["flux_reversal"] = targets[rxn_id]["flux_reversal"]
+        rxn_data["suddenly_essential"] = targets[rxn_id][
+            "suddenly_essential"
+        ]
+        result.append(rxn_data)
+    return DataFrame(
+        result,
+        columns=[
+            "reaction_target",
+            "reaction_name",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+            "new_flux_level",
+            "score",
+            "knockout",
+            "flux_reversal",
+            "suddenly_essential",
+        ],
+    )
+
+
+def get_opt_gene_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    for gene_id in targets:
+        for target in targets[gene_id]:
+            gene_data = {"gene_target": gene_id}
+            gene_data["gene_name"] = target["name"]
+            gene_data["reaction_id"] = target["reaction_id"]
+            gene_data["reaction_name"] = target["reaction_name"]
+            gene_data["subsystem"] = target["subsystem"]
+            gene_data["gpr"] = target["gpr"]
+            gene_data["definition_of_stoichiometry"] = target[
                 "definition_of_stoichiometry"
             ]
-            rxn_data["new_flux_level"] = t["value"]
-            rxn_data["score"] = t["score"]
-            rxn_data["knockout"] = targets[rxn_id]["knockout"]
-            rxn_data["flux_reversal"] = targets[rxn_id]["flux_reversal"]
-            rxn_data["suddenly_essential"] = targets[rxn_id][
-                "suddenly_essential"
+            result.append(gene_data)
+    return DataFrame(
+        result,
+        columns=[
+            "gene_target",
+            "gene_name",
+            "reaction_id",
+            "reaction_name",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+        ],
+    )
+
+
+def get_cofactor_swap_data(pathway):
+    result = []
+    targets = pathway["targets"]
+    manipulations = pathway["manipulations"]
+    for target in manipulations:
+        rxn_id = target["id"]
+        rxn_data = {"reaction_target": rxn_id}
+        swapped_from = target["from"]
+        swapped_to = target["to"]
+        rxn_data["swapped_cofactors"] = "; ".join(
+            [
+                swapped_from[i] + " -> " + swapped_to[i]
+                for i in range(len(swapped_from))
             ]
-            result.append(rxn_data)
-        df = DataFrame(
-            result,
-            columns=[
-                "reaction_target",
-                "reaction_name",
-                "subsystem",
-                "gpr",
-                "definition_of_stoichiometry",
-                "new_flux_level",
-                "score",
-                "knockout",
-                "flux_reversal",
-                "suddenly_essential",
-            ],
         )
-    elif pathway["method"] == "PathwayPredictor+OptGene":
-        for gene_id in targets:
-            for t in targets[gene_id]:
-                gene_data = {"gene_target": gene_id}
-                gene_data["gene_name"] = t["name"]
-                gene_data["reaction_id"] = t["reaction_id"]
-                gene_data["reaction_name"] = t["reaction_name"]
-                gene_data["subsystem"] = t["subsystem"]
-                gene_data["gpr"] = t["gpr"]
-                gene_data["definition_of_stoichiometry"] = t[
-                    "definition_of_stoichiometry"
-                ]
-                result.append(rxn_data)
-        df = DataFrame(
-            result,
-            columns=[
-                "gene_target",
-                "gene_name",
-                "reaction_id",
-                "reaction_name",
-                "subsystem",
-                "gpr",
-                "definition_of_stoichiometry",
-            ],
-        )
-    elif pathway["method"] == "PathwayPredictor+CofactorSwap":
-        for t in manipulations:
-            rxn_id = t["id"]
-            rxn_data = {"reaction_target": rxn_id}
-            swapped_from = t["from"]
-            swapped_to = t["to"]
-            rxn_data["swapped_cofactors"] = "; ".join(
-                [
-                    swapped_from[i] + " -> " + swapped_to[i]
-                    for i in range(len(swapped_from))
-                ]
-            )
-            rxn_data["reaction_name"] = targets[rxn_id]["name"]
-            rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
-            rxn_data["gpr"] = targets[rxn_id]["gpr"]
-            rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
-                "definition_of_stoichiometry"
-            ]
-            result.append(rxn_data)
-        df = DataFrame(
-            result,
-            columns=[
-                "reaction_target",
-                "reaction_name",
-                "swapped_cofactors",
-                "subsystem",
-                "gpr",
-                "definition_of_stoichiometry",
-            ],
-        )
-    else:
-        raise ValueError(f"Unknown method '{pathway.method}'.")
-    return df.to_csv()
+        rxn_data["reaction_name"] = targets[rxn_id]["name"]
+        rxn_data["subsystem"] = targets[rxn_id]["subsystem"]
+        rxn_data["gpr"] = targets[rxn_id]["gpr"]
+        rxn_data["definition_of_stoichiometry"] = targets[rxn_id][
+            "definition_of_stoichiometry"
+        ]
+        result.append(rxn_data)
+    return DataFrame(
+        result,
+        columns=[
+            "reaction_target",
+            "reaction_name",
+            "swapped_cofactors",
+            "subsystem",
+            "gpr",
+            "definition_of_stoichiometry",
+        ],
+    )
 
 
 def init_app(app):
