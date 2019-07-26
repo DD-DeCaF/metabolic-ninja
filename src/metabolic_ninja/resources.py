@@ -18,12 +18,14 @@
 import json
 import logging
 import os
+from io import BytesIO
+from zipfile import ZipFile
 
 import requests
 from flask import g, make_response
 from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
-from pandas import DataFrame
+from pandas import DataFrame, ExcelWriter
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
@@ -239,7 +241,15 @@ def get_tabular_data(pathway):
         df = get_cofactor_swap_data(pathway)
     else:
         raise ValueError(f"Unknown method '{pathway['method']}'.")
-    return df.to_csv()
+    memory_file = BytesIO()
+    with ZipFile(memory_file, "w") as zf:
+        zf.writestr("data.csv", df.to_csv())
+        output = BytesIO()
+        writer = ExcelWriter(output)
+        df.to_excel(writer)
+        writer.save()
+        zf.writestr("data.xlsx", output.getvalue())
+    return memory_file.getvalue()
 
 
 def get_diff_fva_data(pathway):
