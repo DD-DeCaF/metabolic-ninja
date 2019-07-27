@@ -30,7 +30,11 @@ from .app import app
 from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
 from .rabbitmq import submit_job
-from .schemas import PredictionJobRequestSchema, PredictionJobSchema
+from .schemas import (
+    PredictionJobRequestSchema,
+    PredictionJobSchema,
+    JobExportRequestSchema,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -186,8 +190,8 @@ class ProductsResource(MethodResource):
 
 
 class JobExportResource(MethodResource):
-    def get(self, job_id, prediction_id):
-        job_id = int(job_id)
+    @use_kwargs(JobExportRequestSchema)
+    def post(self, job_id, prediction_ids):
         try:
             job = (
                 DesignJob.query.filter(DesignJob.id == job_id)
@@ -203,30 +207,29 @@ class JobExportResource(MethodResource):
                 404,
             )
         if not job.is_complete():
-            return (
-                {"error": f"Job {job_id} is still in progress."},
-                400,
+            return ({"error": f"Job {job_id} is still in progress."}, 400)
+        predictions = []
+        for prediction_id in prediction_ids:
+            prediction = next(
+                (
+                    x
+                    for x in job.result["diff_fva"]
+                    + job.result["opt_gene"]
+                    + job.result["cofactor_swap"]
+                    if x["id"] == prediction_id
+                ),
+                None,
             )
-        prediction = next(
-            (
-                x
-                for x in job.result["diff_fva"]
-                + job.result["opt_gene"]
-                + job.result["cofactor_swap"]
-                if x["id"] == prediction_id
-            ),
-            None,
-        )
-        if not prediction:
-            return (
-                {
-                    "error":
-                        f"Cannot find any prediction with id {prediction_id} "
+            if not prediction:
+                return (
+                    {
+                        "error": f"Cannot find any prediction with id {prediction_id} "
                         f"in job {job_id}."
-                },
-                404,
-            )
-        result = job.get_tabular_data(prediction)
+                    },
+                    404,
+                )
+            predictions.append(prediction)
+        result = job.get_tabular_data(predictions)
         response = make_response(result, 200)
         response.headers["Content-Type"] = "application/zip"
         response.headers["Content-Disposition"] = "attachment"
@@ -243,5 +246,5 @@ def init_app(app):
     docs = FlaskApiSpec(app)
     register("/predictions", PredictionJobsResource)
     register("/predictions/<string:job_id>", PredictionJobResource)
-    register("/predictions/<string:job_id>/<string:prediction_id>", JobExportResource)
+    register("/predictions/export", JobExportResource)
     register("/products", ProductsResource)

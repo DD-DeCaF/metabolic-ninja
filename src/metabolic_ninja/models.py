@@ -64,23 +64,29 @@ class DesignJob(TimestampMixin, db.Model):
     def is_complete(self):
         return self.status in ("SUCCESS", "FAILURE", "REVOKED")
 
-    def get_tabular_data(self, prediction):
-        if prediction["method"] == "PathwayPredictor+DifferentialFVA":
-            df = self.get_diff_fva_data(prediction)
-        elif prediction["method"] == "PathwayPredictor+OptGene":
-            df = self.get_opt_gene_data(prediction)
-        elif prediction["method"] == "PathwayPredictor+CofactorSwap":
-            df = self.get_cofactor_swap_data(prediction)
-        else:
-            raise ValueError(f"Unknown method '{prediction['method']}'.")
+    def get_tabular_data(self, predictions):
         memory_file = BytesIO()
         with ZipFile(memory_file, "w") as zf:
-            zf.writestr("data.csv", df.to_csv())
-            output = BytesIO()
-            writer = ExcelWriter(output)
-            df.to_excel(writer)
-            writer.save()
-            zf.writestr("data.xlsx", output.getvalue())
+            for prediction in predictions:
+                if prediction["method"] == "PathwayPredictor+DifferentialFVA":
+                    df = self.get_diff_fva_data(prediction)
+                elif prediction["method"] == "PathwayPredictor+OptGene":
+                    df = self.get_opt_gene_data(prediction)
+                elif prediction["method"] == "PathwayPredictor+CofactorSwap":
+                    df = self.get_cofactor_swap_data(prediction)
+                else:
+                    raise ValueError(
+                        f"Unknown method '{prediction['method']}'."
+                    )
+                fileName = prediction["method"].split("+")[1]
+                zf.writestr(f"{fileName}-{prediction['id']}.csv", df.to_csv())
+                output = BytesIO()
+                writer = ExcelWriter(output)
+                df.to_excel(writer)
+                writer.save()
+                zf.writestr(
+                    f"{fileName}-{prediction['id']}.xlsx", output.getvalue()
+                )
         return memory_file.getvalue()
 
     def get_diff_fva_data(self, prediction):
