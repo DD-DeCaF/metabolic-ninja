@@ -202,33 +202,33 @@ class JobExportResource(MethodResource):
                 {"error": f"Cannot find any design job with id {job_id}."},
                 404,
             )
-        else:
-            if job.is_complete():
-                status = 200
-            else:
-                status = 202
-            prediction = next(
-                (
-                    x
-                    for x in job.result["diff_fva"]
-                    + job.result["opt_gene"]
-                    + job.result["cofactor_swap"]
-                    if x["id"] == prediction_id
-                ),
-                None,
+        if not job.is_complete():
+            return (
+                {"error": f"Job {job_id} is still in progress."},
+                400,
             )
-            if not prediction:
-                return (
-                    {
-                        "error":
-                            f"Cannot find any prediction with id {prediction_id} "
-                            f"in job {job_id}."
-                    },
-                    404,
-                )
+        prediction = next(
+            (
+                x
+                for x in job.result["diff_fva"]
+                + job.result["opt_gene"]
+                + job.result["cofactor_swap"]
+                if x["id"] == prediction_id
+            ),
+            None,
+        )
+        if not prediction:
+            return (
+                {
+                    "error":
+                        f"Cannot find any prediction with id {prediction_id} "
+                        f"in job {job_id}."
+                },
+                404,
+            )
         result = job.get_tabular_data(prediction)
-        response = make_response(result, status)
-        response.headers["Content-Type"] = "text/csv"
+        response = make_response(result, 200)
+        response.headers["Content-Type"] = "application/zip"
         response.headers["Content-Disposition"] = "attachment"
         return response
 
