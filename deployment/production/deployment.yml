@@ -154,7 +154,7 @@ spec:
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB_NAME
-          value: metabolic_ninja
+          value: metabolic_ninja_production
         - name: POSTGRES_USERNAME
           valueFrom:
             secretKeyRef:
