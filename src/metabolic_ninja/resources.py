@@ -20,7 +20,7 @@ import logging
 import os
 
 import requests
-from flask import g, make_response
+from flask import g, make_response, request
 from flask_apispec import MethodResource, marshal_with, use_kwargs
 from flask_apispec.extension import FlaskApiSpec
 from sqlalchemy.orm.exc import NoResultFound
@@ -31,9 +31,9 @@ from .jwt import jwt_require_claim, jwt_required
 from .models import DesignJob, db
 from .rabbitmq import submit_job
 from .schemas import (
+    JobExportRequestSchema,
     PredictionJobRequestSchema,
     PredictionJobSchema,
-    JobExportRequestSchema,
 )
 
 
@@ -190,8 +190,9 @@ class ProductsResource(MethodResource):
 
 
 class JobExportResource(MethodResource):
-    @use_kwargs(JobExportRequestSchema)
-    def post(self, job_id, prediction_ids):
+    @use_kwargs(JobExportRequestSchema, locations=["query"])
+    def get(self, job_id):
+        prediction_ids = request.args.getlist("prediction_ids[]")
         try:
             job = (
                 DesignJob.query.filter(DesignJob.id == job_id)
@@ -202,12 +203,9 @@ class JobExportResource(MethodResource):
                 .one()
             )
         except NoResultFound:
-            return (
-                {"error": f"Cannot find any design job with id {job_id}."},
-                404,
-            )
+            return f"Cannot find any design job with id {job_id}.", 404
         if not job.is_complete():
-            return ({"error": f"Job {job_id} is still in progress."}, 400)
+            return f"Job {job_id} is still in progress.", 400
         predictions = []
         for prediction_id in prediction_ids:
             prediction = next(
@@ -222,10 +220,8 @@ class JobExportResource(MethodResource):
             )
             if not prediction:
                 return (
-                    {
-                        "error": f"Cannot find any prediction with id {prediction_id} "
-                        f"in job {job_id}."
-                    },
+                    f"Cannot find any prediction with id {prediction_id} "
+                    f"in job {job_id}.",
                     404,
                 )
             predictions.append(prediction)
@@ -245,6 +241,6 @@ def init_app(app):
 
     docs = FlaskApiSpec(app)
     register("/predictions", PredictionJobsResource)
-    register("/predictions/<string:job_id>", PredictionJobResource)
-    register("/predictions/export", JobExportResource)
+    register("/predictions/<int:job_id>", PredictionJobResource)
+    register("/predictions/export/<int:job_id>", JobExportResource)
     register("/products", ProductsResource)

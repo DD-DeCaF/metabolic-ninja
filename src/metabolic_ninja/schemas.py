@@ -58,5 +58,4 @@ class PredictionJobSchema(StrictSchema):
 
 
 class JobExportRequestSchema(StrictSchema):
-    job_id = fields.Integer(required=True)
-    prediction_ids = fields.List(fields.String(), required=True)
+    prediction_ids = fields.List(fields.String())
