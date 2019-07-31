@@ -55,3 +55,7 @@ class PredictionJobSchema(StrictSchema):
     created = fields.DateTime(required=True)
     updated = fields.DateTime(required=True)
     result = fields.Dict(required=True, allow_none=True)
+
+
+class JobExportRequestSchema(StrictSchema):
+    prediction_ids = fields.List(fields.String())
