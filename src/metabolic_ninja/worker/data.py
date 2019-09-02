@@ -91,6 +91,12 @@ class Job:
         self.user_name = user_name
         self.user_email = user_email
 
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__name__} {self.job_id}: Looking for {self.product_name}"
+            f" in {self.model}>"
+        )
+
     def save(self, **kwargs):
         logger.debug(f"Updating database status of job {self.job_id}")
         with db_session() as session:
