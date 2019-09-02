@@ -28,7 +28,7 @@ elif [ "${TRAVIS_BRANCH}" = "devel" ]; then
   kubectl delete deployment metabolic-ninja-worker-staging
 
   # Now soft redeploy the web + rabbitmq pod.
-  kubectl set image deployment/metabolic-ninja-staging web=${IMAGE_REPO}:${TRAVIS_COMMIT::12} disk-usage=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
+  kubectl set image deployment/metabolic-ninja-staging web=${IMAGE_REPO}:${TRAVIS_COMMIT::12}
 
   # Finally, redeploy the workers with the new version. RabbitMQ will resend any aborted
   # jobs. They'll have to be restarted from scratch, but will at least not become stale.
