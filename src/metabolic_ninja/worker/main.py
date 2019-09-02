@@ -96,10 +96,16 @@ def on_message(channel, method_frame, header_frame, body, connection):
 
 def ack_message(channel, delivery_tag):
     """Acknowledge a finished job."""
-    # If the channel was closed for some reason, ignore.
-    logger.debug(f"ACKing message {delivery_tag}")
     if channel.is_open:
+        logger.debug(f"ACKing message {delivery_tag}")
         channel.basic_ack(delivery_tag)
+    else:
+        # If the channel was closed for some reason, ignore. That is usually the case if
+        # rabbitmq is shutting down and closed the connection while a job was still
+        # running.
+        logger.warning(
+            f"Cannot ACK message {delivery_tag} because the channel is closed."
+        )
 
 
 def on_terminate(channel, signum, frame):
