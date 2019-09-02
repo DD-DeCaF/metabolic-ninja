@@ -137,23 +137,6 @@ spec:
         volumeMounts:
           - mountPath: "/var/lib/rabbitmq"
             name: metabolic-ninja-production
-      - name: disk-usage
-        image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:master
-        command: ["python", "-m", "disk_usage.main"]
-        env:
-        - name: SENTRY_DSN
-          valueFrom:
-            secretKeyRef:
-              name: metabolic-ninja-production
-              key: SENTRY_DSN
-        resources:
-          requests:
-            cpu: "10m"
-          limits:
-            cpu: "2000m"
-        volumeMounts:
-          - mountPath: "/var/lib/rabbitmq"
-            name: metabolic-ninja-production
       volumes:
         - name: metabolic-ninja-production
           persistentVolumeClaim:
