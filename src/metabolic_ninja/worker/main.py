@@ -143,7 +143,8 @@ def main():
         "Pika consumption loop exited. Cleaning up and terminating application..."
     )
 
-    # Wait for any worker threads to complete
+    # Wait for any worker threads to complete their jobs, before disconnecting from the
+    # RabbitMQ broker.
     for thread in worker_threads:
         thread.join()
 
