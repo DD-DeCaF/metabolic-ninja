@@ -14,3 +14,12 @@
 # limitations under the License.
 
 """Predict heterologous pathways for the given organism and chemical of interest"""
+
+import warnings
+
+# Silence the following warning which appears at cameo import:
+#   UserWarning: Cannot import any plotting library. Please install one of
+#   'plotly', 'bokeh' or 'ggplot' if you want to use any plotting function
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import cameo
