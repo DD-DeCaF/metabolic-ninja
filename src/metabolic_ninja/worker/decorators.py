@@ -55,8 +55,7 @@ def task(function):
         try:
             retval = function(job, *args, **kwargs)
         except Exception as exception:
-            # Send a null value to stop the main thread from blocking on
-            # receiving.
+            # Send a null value to stop the main process from blocking on receiving.
             pipe.send(None)
             # Update the job status.
             job.save(status="FAILURE")
