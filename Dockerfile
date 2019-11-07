@@ -18,7 +18,8 @@ ARG CWD="/app"
 ENV PYTHONPATH="${CWD}/src"
 WORKDIR "${CWD}"
 
-COPY requirements.in dev-requirements.in ./
-RUN pip install --upgrade -r requirements.in -r dev-requirements.in
+COPY requirements ./requirements
+
+RUN pip-sync requirements/requirements.txt
 
 COPY . "${CWD}/"
