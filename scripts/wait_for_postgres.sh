@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eux
+set -eu
 
 # Note: postgres will sporadically accept connections while the
 # docker-entrypoint script is still running, so an explicit check for init to
