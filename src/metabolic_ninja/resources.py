@@ -17,8 +17,8 @@
 
 import json
 import logging
-import warnings
 import os
+import warnings
 
 import requests
 from flask import g, make_response, request
