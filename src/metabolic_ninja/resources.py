@@ -17,6 +17,7 @@
 
 import json
 import logging
+import warnings
 import os
 
 import requests
@@ -48,7 +49,9 @@ def init_app(app):
 
     def register(path, resource):
         app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
-        docs.register(resource, endpoint=resource.__name__)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            docs.register(resource, endpoint=resource.__name__)
 
     docs = FlaskApiSpec(app)
     register("/predictions", PredictionJobsResource)
