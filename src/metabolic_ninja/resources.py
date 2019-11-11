@@ -43,6 +43,20 @@ with open("data/products.json") as file_:
     PRODUCT_LIST = json.load(file_)
 
 
+def init_app(app):
+    """Register API resources on the provided Flask application."""
+
+    def register(path, resource):
+        app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
+        docs.register(resource, endpoint=resource.__name__)
+
+    docs = FlaskApiSpec(app)
+    register("/predictions", PredictionJobsResource)
+    register("/predictions/<int:job_id>", PredictionJobResource)
+    register("/predictions/export/<int:job_id>", JobExportResource)
+    register("/products", ProductsResource)
+
+
 class PredictionJobsResource(MethodResource):
     @jwt_required
     @use_kwargs(PredictionJobRequestSchema)
@@ -230,17 +244,3 @@ class JobExportResource(MethodResource):
         response.headers["Content-Type"] = "application/zip"
         response.headers["Content-Disposition"] = "attachment"
         return response
-
-
-def init_app(app):
-    """Register API resources on the provided Flask application."""
-
-    def register(path, resource):
-        app.add_url_rule(path, view_func=resource.as_view(resource.__name__))
-        docs.register(resource, endpoint=resource.__name__)
-
-    docs = FlaskApiSpec(app)
-    register("/predictions", PredictionJobsResource)
-    register("/predictions/<int:job_id>", PredictionJobResource)
-    register("/predictions/export/<int:job_id>", JobExportResource)
-    register("/products", ProductsResource)
