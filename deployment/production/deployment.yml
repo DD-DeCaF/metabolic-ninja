@@ -153,7 +153,7 @@ spec:
     matchLabels:
       app: metabolic-ninja-worker
       env: staging
-  replicas: 4
+  replicas: 1
   template:
     metadata:
       labels:
