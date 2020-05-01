@@ -21,6 +21,7 @@ env:
   - BUILD_TIMESTAMP=$(date --utc --iso-8601=seconds)
   - BUILD_DATE=$(date --utc --iso-8601=date)
   - BUILD_TAG=${BRANCH}_${BUILD_DATE}_${SHORT_COMMIT}
+  - POSTGRES_PASS=secret
 
 before_install:
 - ./scripts/install_gcloud.sh

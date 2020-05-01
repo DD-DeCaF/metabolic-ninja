@@ -86,7 +86,7 @@ databases:
 	docker-compose stop
 
 ## Run post-build initialization. Only needed once!
-post-build:
+post-build: databases
 
 ## Push local Docker images to their registries.
 push:
