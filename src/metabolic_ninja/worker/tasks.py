@@ -57,7 +57,8 @@ def design(connection, channel, delivery_tag, body, ack_message):
         for index, pathway in enumerate(pathways, start=1):
             # Differential FVA
             logger.debug(
-                f"Starting task: Differential FVA (pathway {index}/{len(pathways)})"
+                f"Starting task: Differential FVA "
+                f"(pathway {index}/{len(pathways)})"
             )
             results = diff_fva(job, pathway, "PathwayPredictor+DifferentialFVA")
             _collect_results(
@@ -69,7 +70,8 @@ def design(connection, channel, delivery_tag, body, ack_message):
 
             # OptGene
             # FIXME (Moritz): Disabled for fast test on staging.
-            # logger.debug(f"Starting task: OptGene (pathway {index}/{len(pathways)})")
+            # logger.debug(f"Starting task: OptGene
+            # (pathway {index}/{len(pathways)})")
             # results = opt_gene(job, pathway, "PathwayPredictor+OptGene")
             # _collect_results(
             #     results,
@@ -80,7 +82,8 @@ def design(connection, channel, delivery_tag, body, ack_message):
 
             # Cofactor Swap Optimization
             logger.debug(
-                f"Starting task: Cofactor Swap (pathway {index}/{len(pathways)})"
+                f"Starting task: Cofactor Swap "
+                f"(pathway {index}/{len(pathways)})"
             )
             results = cofactor_swap(
                 job, pathway, "PathwayPredictor+CofactorSwap"
@@ -97,10 +100,11 @@ def design(connection, channel, delivery_tag, body, ack_message):
 
         _notify(job)
     except TaskFailedException:
-        # Exceptions are handled in the child processes, so there's nothing to do here.
-        # Just abort the workflow and get ready for new jobs.
+        # Exceptions are handled in the child processes, so there's nothing to
+        # do here. Just abort the workflow and get ready for new jobs.
         logger.info(
-            f"Task failed; aborting workflow and restarting consumption from queue"
+            f"Task failed; aborting workflow and restarting consumption from "
+            f"queue."
         )
     finally:
         # Acknowledge the message, whether it failed or not.
@@ -113,7 +117,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
 def find_product(job):
     # Find the product name via the cameo designer. In a future far, far away
     # this should be a call to a web service.
-    return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(
+    return cameo.api.design.translate_product_to_universal_reactions_model_metabolite(  # noqa: E501
         job.product_name, job.source
     )
 
@@ -174,8 +178,8 @@ def cofactor_swap(job, pathway, method):
 
 def _collect_results(results, reactions, metabolites, container):
     for row in results:
-        # Move the full reaction and metabolite definitions in a dict keyed by ID to
-        # avoid duplicate definitions.
+        # Move the full reaction and metabolite definitions in a dict keyed by
+        # ID to avoid duplicate definitions.
         for reaction in row.get("heterologous_reactions", []):
             reactions[reaction.id] = reaction_to_dict(reaction)
             for metabolite in reaction.metabolites:
@@ -185,7 +189,8 @@ def _collect_results(results, reactions, metabolites, container):
         for metabolite in row.get("exotic_cofactors", []):
             metabolites[metabolite.id] = metabolite_to_dict(metabolite)
 
-        # Replace reaction/metabolite references with their IDs in the actual results
+        # Replace reaction/metabolite references with their IDs in the actual
+        # results.
         row["knockouts"] = [t.id for t in row.get("knockouts", [])]
         row["manipulations"] = row.get("manipulations", [])
         row["heterologous_reactions"] = [
@@ -198,7 +203,8 @@ def _collect_results(results, reactions, metabolites, container):
             m.id for m in row.get("exotic_cofactors", [])
         ]
 
-        # Add the full result row to the appropriate container (based on method).
+        # Add the full result row to the appropriate container
+        # (based on method).
         container.append(row)
 
 

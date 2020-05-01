@@ -1,5 +1,5 @@
-sudo: required
-language: minimal
+os: linux
+language: shell
 
 git:
   depth: 2
@@ -10,32 +10,39 @@ branches:
   - devel
 
 services:
-  - docker
+- docker
 
 env:
   global:
-    - IMAGE_REPO=gcr.io/dd-decaf-cfbf6/metabolic-ninja
-    - IMAGE_TAG=${TRAVIS_BRANCH}
+  - IMAGE=gcr.io/dd-decaf-cfbf6/metabolic-ninja
+  - BRANCH=${TRAVIS_BRANCH}
+  - BUILD_COMMIT=${TRAVIS_COMMIT}
+  - SHORT_COMMIT=${TRAVIS_COMMIT:0:7}
+  - BUILD_TIMESTAMP=$(date --utc --iso-8601=seconds)
+  - BUILD_DATE=$(date --utc --iso-8601=date)
+  - BUILD_TAG=${BRANCH}_${BUILD_DATE}_${SHORT_COMMIT}
+  - POSTGRES_PASS=secret
 
 before_install:
-  - ./scripts/install_gcloud.sh
-  - ./scripts/install_kubectl.sh
+- ./scripts/install_gcloud.sh
+- ./scripts/install_kubectl.sh
+- make setup
 
 install:
-  - docker build -t ${IMAGE_REPO}:${TRAVIS_COMMIT::12} -t ${IMAGE_REPO}:${TRAVIS_BRANCH} .
-  - make setup
-  - make databases
+- make build
+- make build-travis
+- make post-build
+- make start
 
 script:
-  - make flake8
-  - make isort
-  - make license
-  - make safety
-  - make test-travis
+- make style
+- make safety
+# Run the tests and report coverage (see https://docs.codecov.io/docs/testing-with-docker).
+- docker-compose exec -e ENVIRONMENT=testing web pytest --cov=metabolic_ninja --cov-report=term --cov-report=xml
+- bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
-  - docker push ${IMAGE_REPO}:${TRAVIS_COMMIT::12}
-  - docker push ${IMAGE_REPO}:${TRAVIS_BRANCH}
+- if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then make push; fi
 
 deploy:
   provider: script

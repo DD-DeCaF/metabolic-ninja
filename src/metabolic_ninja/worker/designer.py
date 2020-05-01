@@ -22,7 +22,9 @@ from cameo.strain_design.heuristic.evolutionary.objective_functions import (
     biomass_product_coupled_min_yield,
     product_yield,
 )
-from cameo.strain_design.heuristic.evolutionary_based import CofactorSwapOptimization
+from cameo.strain_design.heuristic.evolutionary_based import (
+    CofactorSwapOptimization,
+)
 from cobra.exceptions import OptimizationError
 from numpy import isnan
 
@@ -205,8 +207,9 @@ def evaluate_opt_gene(designs, pathway, model, method):
                                 "reaction_name": rxn.name,
                                 "subsystem": rxn.subsystem,
                                 "gpr": rxn.gene_reaction_rule,
-                                "definition_of_stoichiometry":
-                                    rxn.build_reaction_string(True),
+                                "definition_of_stoichiometry": (
+                                    rxn.build_reaction_string(True)
+                                ),
                             }
                         )
                 results.append(

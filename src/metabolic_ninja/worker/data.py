@@ -61,15 +61,15 @@ class Job:
     ):
         # Configure the model object for cameo.
         self.model = model
-        # FIXME (Moritz Beber): We should allow users to specify a medium that they
-        #  previously
+        # FIXME (Moritz Beber): We should allow users to specify a medium that
+        #  they previously
         # uploaded.
         self.model.solver = "cplex"
-        # FIXME (Moritz Beber): This uses BiGG notation to change the lower bound
-        #  of the exchange reaction. Should instead find this using a combination of
-        #  metabolites in the `model.exchanges`, MetaNetX identifiers and/or
-        #  metabolite formulae. Then set this on the `model.medium` to be sure
-        #  about exchange direction.
+        # FIXME (Moritz Beber): This uses BiGG notation to change the lower
+        #  bound of the exchange reaction. Should instead find this using a
+        #  combination of metabolites in the `model.exchanges`, MetaNetX
+        #  identifiers and/or metabolite formulae. Then set this on the
+        #  `model.medium` to be sure about exchange direction.
         if not aerobic and "EX_o2_e" in self.model.reactions:
             self.model.reactions.EX_o2_e.lower_bound = 0
         self.model.biomass = biomass_reaction_id
@@ -93,8 +93,8 @@ class Job:
 
     def __repr__(self):
         return (
-            f"<{self.__class__.__name__} {self.job_id}: Looking for {self.product_name}"
-            f" in {self.model}>"
+            f"<{self.__class__.__name__} {self.job_id}: "
+            f"Looking for {self.product_name} in {self.model}>"
         )
 
     def save(self, **kwargs):

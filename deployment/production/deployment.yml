@@ -114,7 +114,6 @@ spec:
             secretKeyRef:
               name: metabolic-ninja-production
               key: POSTGRES_PASS
-        command: ["gunicorn", "-c", "gunicorn.py", "metabolic_ninja.wsgi:app"]
         readinessProbe:
           httpGet:
             path: /metabolic-ninja/healthz

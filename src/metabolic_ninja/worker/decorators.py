@@ -50,19 +50,20 @@ def task(function):
         # This is the function called in a new process.
         # Sentry needs to be initialized here (in addition to the main process).
         sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))
-        # Call the wrapped function with the given arguments and pass the return value
-        # back through a pipe.
+        # Call the wrapped function with the given arguments and pass the
+        # return value back through a pipe.
         try:
             retval = function(job, *args, **kwargs)
         except Exception as exception:
-            # Send a null value to stop the main process from blocking on receiving.
+            # Send a null value to stop the main process from blocking on
+            # receiving.
             pipe.send(None)
             # Update the job status.
             job.save(status="FAILURE")
             logger.exception(exception)
             sentry_sdk.capture_exception(exception)
-            # Wait for the sentry event to be sent; otherwise we'd exit the process too
-            # soon.
+            # Wait for the sentry event to be sent; otherwise we'd exit the
+            # process too soon.
             sentry_sdk.flush()
             sys.exit(-1)
         else:

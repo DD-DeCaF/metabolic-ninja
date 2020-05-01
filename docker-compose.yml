@@ -4,7 +4,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
+      args:
+        - BASE_TAG=${BASE_TAG}
+        - BUILD_COMMIT=${BUILD_COMMIT:-unknown}
+        - BUILD_TIMESTAMP=${BUILD_TIMESTAMP:-unknown}
+    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${BRANCH:-latest}
     depends_on:
     - rabbitmq
     - postgres
@@ -32,10 +36,9 @@ services:
     - POSTGRES_PASS=${POSTGRES_PASS}
     - IAM_API=${IAM_API:-https://api-staging.dd-decaf.eu/iam}
     - WAREHOUSE_API=${WAREHOUSE_API:-https://api-staging.dd-decaf.eu/warehouse}
-    command: gunicorn -c gunicorn.py metabolic_ninja.wsgi:app
 
   worker:
-    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
+    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${BRANCH:-latest}
     depends_on:
     - rabbitmq
     networks:
@@ -66,6 +69,8 @@ services:
 
   postgres:
     image: postgres:9.6-alpine
+    environment:
+    - POSTGRES_PASSWORD=${POSTGRES_PASS}
     volumes:
       - /var/lib/postgresql/data
     networks:

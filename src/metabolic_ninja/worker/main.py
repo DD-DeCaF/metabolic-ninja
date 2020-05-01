@@ -35,7 +35,8 @@ logging.config.dictConfig(
         "formatters": {
             "simple": {
                 "format": (
-                    "%(asctime)s [%(levelname)s] %(name)s::%(funcName)s:%(lineno)d | "
+                    "%(asctime)s [%(levelname)s] "
+                    "%(name)s::%(funcName)s:%(lineno)d | "
                     "%(message)s"
                 )
             }
@@ -57,8 +58,8 @@ logging.config.dictConfig(
     }
 )
 sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))
-# Ignore some verbose loggers from pika (relevant when unable to connect, but we handle
-# that anyway).
+# Ignore some verbose loggers from pika (relevant when unable to connect, but
+# we handle that anyway).
 sentry_sdk.integrations.logging.ignore_logger(
     "pika.adapters.utils.io_services_utils"
 )
@@ -69,10 +70,11 @@ sentry_sdk.integrations.logging.ignore_logger(
     "pika.adapters.blocking_connection"
 )
 
-# Whenever a job is received, the work on it will be started in a new thread. This is
-# to allow the RabbitMQ i/o loop to do its thing (like sending heartbeats to the server
-# to keep the connection alive). Started threads are stored in this list, so that we can
-# wait for the threads to complete when terminating the application.
+# Whenever a job is received, the work on it will be started in a new thread.
+# This is to allow the RabbitMQ i/o loop to do its thing (like sending
+# heartbeats to the server to keep the connection alive). Started threads are
+# stored in this list, so that we can wait for the threads to complete when
+# terminating the application.
 worker_threads = []
 
 
@@ -100,9 +102,9 @@ def ack_message(channel, delivery_tag):
         logger.debug(f"ACKing message {delivery_tag}")
         channel.basic_ack(delivery_tag)
     else:
-        # If the channel was closed for some reason, ignore. That is usually the case if
-        # rabbitmq is shutting down and closed the connection while a job was still
-        # running.
+        # If the channel was closed for some reason, ignore. That is usually the
+        # case if rabbitmq is shutting down and closed the connection while a
+        # job was still running.
         logger.warning(
             f"Cannot ACK message {delivery_tag} because the channel is closed."
         )
@@ -122,8 +124,8 @@ def main():
         )
     except pika.exceptions.AMQPConnectionError:
         # Connection failed - exit and rely on the environment to restart the
-        # application. Don't let the exception bubble though; we don't need a Sentry
-        # notification for this.
+        # application. Don't let the exception bubble though; we don't need a
+        # Sentry notification for this.
         logger.warning(
             "AMQPConnectionError: Cannot connect to RabbitMQ. Aborting."
         )
@@ -146,11 +148,12 @@ def main():
     channel.start_consuming()
 
     logger.info(
-        "Pika consumption loop exited. Cleaning up and terminating application..."
+        "Pika consumption loop exited. Cleaning up and terminating "
+        "application..."
     )
 
-    # Wait for any worker threads to complete their jobs, before disconnecting from the
-    # RabbitMQ broker.
+    # Wait for any worker threads to complete their jobs, before disconnecting
+    # from the RabbitMQ broker.
     for thread in worker_threads:
         thread.join()
 
