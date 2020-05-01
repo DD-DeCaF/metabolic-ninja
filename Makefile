@@ -1,76 +1,145 @@
-.PHONY: setup network build start qa style safety test test-travis flake8 \
-    isort isort-save license stop clean logs
-SHELL:=/bin/bash
+.PHONY: setup lock own build post-build push start qa style safety test qc stop clean logs
 
-#################################################################################
-# COMMANDS                                                                      #
-#################################################################################
+################################################################################
+# Variables                                                                    #
+################################################################################
 
-## Run all initialization targets.
-setup: network
+IMAGE ?= gcr.io/dd-decaf-cfbf6/metabolic-ninja
+BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+BUILD_COMMIT ?= $(shell git rev-parse HEAD)
+SHORT_COMMIT ?= $(shell git rev-parse --short HEAD)
+BUILD_TIMESTAMP ?= $(shell date --utc --iso-8601=seconds)
+BUILD_DATE ?= $(shell date --utc --iso-8601=date)
+BUILD_TAG ?= ${BRANCH}_${BUILD_DATE}_${SHORT_COMMIT}
+
+################################################################################
+# Commands                                                                     #
+################################################################################
 
 ## Create the docker bridge network if necessary.
 network:
 	docker network inspect DD-DeCaF >/dev/null 2>&1 || \
 		docker network create DD-DeCaF
 
-## Build local docker images.
-build:
-	docker-compose build
+## Run all initialization targets.
+setup: network
 
-## Recompile requirements and store pinned dependencies with hashes.
-pip-compile:
-	docker run --rm -v `pwd`/requirements:/build gcr.io/dd-decaf-cfbf6/modeling-base:compiler \
-		pip-compile --generate-hashes --upgrade --output-file /build/requirements.txt \
-		/build/requirements.in
+## Generate the compiled requirements files.
+lock:
+	docker pull dddecaf/tag-spy:latest
+	$(eval LATEST_BASE_TAG := $(shell gcloud auth print-access-token | \
+		docker run -i --rm dddecaf/tag-spy:latest tag-spy \
+		dd-decaf-cfbf6/modeling-base \
+		cameo \
+		dk.dtu.biosustain.modeling-base.cameo.build.timestamp \
+		--authentication https://gcr.io/v2/token \
+		--registry https://gcr.io \
+		--service gcr.io \
+		--username oauth2accesstoken \
+		--password-stdin))	$(file >LATEST_BASE_TAG, $(LATEST_BASE_TAG))
+	$(eval COMPILER_TAG := $(subst cameo,cameo-compiler,$(LATEST_BASE_TAG)))
+	$(info ************************************************************)
+	$(info * Compiling service dependencies on the basis of:)
+	$(info * gcr.io/dd-decaf-cfbf6/modeling-base:$(COMPILER_TAG))
+	$(info ************************************************************)
+	docker pull gcr.io/dd-decaf-cfbf6/modeling-base:$(COMPILER_TAG)
+	docker run --rm --mount \
+		"source=$(CURDIR)/requirements,target=/opt/requirements,type=bind" \
+		gcr.io/dd-decaf-cfbf6/modeling-base:$(COMPILER_TAG) \
+		pip-compile --allow-unsafe --verbose --generate-hashes --upgrade \
+		/opt/requirements/requirements.in
+
+## Change file ownership from root to local user.
+own:
+	sudo chown "$(shell id --user --name):$(shell id --group --name)" .
+
+## Build the Docker image for deployment.
+build-travis:
+	$(eval LATEST_BASE_TAG := $(shell cat LATEST_BASE_TAG))
+	$(info ************************************************************)
+	$(info * Building the service on the basis of:)
+	$(info * gcr.io/dd-decaf-cfbf6/modeling-base:$(LATEST_BASE_TAG))
+	$(info * Today is $(shell date --utc --iso-8601=date).)
+	$(info * Please re-run `make lock` if you want to check for and)
+	$(info * depend on a later version.)
+	$(info ************************************************************)
+	docker pull gcr.io/dd-decaf-cfbf6/modeling-base:$(LATEST_BASE_TAG)
+	docker build --build-arg BASE_TAG=$(LATEST_BASE_TAG) \
+		--build-arg BUILD_COMMIT=$(BUILD_COMMIT) \
+		--build-arg BUILD_TIMESTAMP=$(BUILD_TIMESTAMP) \
+		--tag $(IMAGE):$(BRANCH) \
+		--tag $(IMAGE):$(BUILD_TAG) \
+		.
+
+## Build the local docker-compose image.
+build:
+	$(eval LATEST_BASE_TAG := $(shell cat LATEST_BASE_TAG))
+	BASE_TAG=$(LATEST_BASE_TAG) docker-compose build
+
+## Create the necessary databases.
+databases:
+	docker-compose up -d postgres
+	./scripts/wait_for_postgres.sh
+	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja;"
+	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja_testing;"
+	docker-compose run --rm web flask db upgrade
+	docker-compose stop
+
+## Run post-build initialization. Only needed once!
+post-build:
+
+## Push local Docker images to their registries.
+push:
+	docker push $(IMAGE):$(BRANCH)
+	docker push $(IMAGE):$(BUILD_TAG)
 
 ## Start all services in the background.
 start:
 #	docker-compose up --force-recreate -d worker
 	docker-compose up --force-recreate -d
 
-## Run all QA targets.
-qa: style safety test
+## Apply all quality assurance (QA) tools.
+qa:
+	docker-compose exec -e ENVIRONMENT=testing web \
+		isort --recursive src tests
+	docker-compose exec -e ENVIRONMENT=testing web \
+		black src tests
 
-## Run all style related targets.
-style: flake8 isort license
-
-## Run flake8.
-flake8:
-	docker-compose run --rm web \
-		flake8 src/metabolic_ninja tests
-
-## Check Python package import order.
 isort:
-	docker-compose run --rm web \
-		isort --check-only --recursive src/metabolic_ninja tests
+	docker-compose exec -e ENVIRONMENT=testing web \
+		isort --check-only --diff --recursive src tests
 
-## Sort imports and write changes to files.
-isort-save:
-	docker-compose run --rm web \
-		isort --recursive src/metabolic_ninja tests
+black:
+	docker-compose exec -e ENVIRONMENT=testing web \
+		black --check --diff src tests
 
-## Verify source code license headers.
+flake8:
+	docker-compose exec -e ENVIRONMENT=testing web \
+		flake8 src tests
+
 license:
-	./scripts/verify_license_headers.sh src/metabolic_ninja tests
+	docker-compose exec -e ENVIRONMENT=testing web \
+		./scripts/verify_license_headers.sh src tests
 
-## Check for known vulnerabilities in python dependencies.
+## Run all style checks.
+style: isort black flake8 license
+
+## Check installed dependencies for vulnerabilities.
 safety:
-	docker-compose run --rm web safety check
+	docker-compose exec -e ENVIRONMENT=testing web \
+		safety check --full-report
 
-## Run the tests.
+## Run the test suite.
 test:
-	docker-compose run --rm -e ENVIRONMENT=testing web \
-		pytest -W ignore::DeprecationWarning --cov=src/metabolic_ninja
+	docker-compose exec -e ENVIRONMENT=testing web \
+		pytest --cov=metabolic_ninja --cov-report=term
 
-## Run the tests and report coverage (see https://docs.codecov.io/docs/testing-with-docker).
-shared := /tmp/coverage
-test-travis:
-	mkdir --parents "$(shared)"
-	docker-compose run --rm -e ENVIRONMENT=testing -v "$(shared):$(shared)" \
-		web pytest -W ignore::DeprecationWarning --cov-report \
-		"xml:$(shared)/coverage.xml" --cov-report term --cov=src/metabolic_ninja
-	bash <(curl -s https://codecov.io/bash) -f "$(shared)/coverage.xml"
+## Run all quality control (QC) tools.
+qc: style safety test
+
+## Check the gunicorn configuration.
+gunicorn:
+	docker-compose run --rm web gunicorn --check-config -c gunicorn.py metabolic_ninja.wsgi:app
 
 ## Stop all services.
 stop:
@@ -84,26 +153,18 @@ clean:
 logs:
 	docker-compose logs --tail="all" -f
 
-## Create the necessary databases.
-databases:
-	docker-compose up -d postgres
-	./scripts/wait_for_postgres.sh
-	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja;"
-	docker-compose exec postgres psql -U postgres -c "create database metabolic_ninja_testing;"
-	docker-compose run --rm web flask db upgrade
-	docker-compose stop
-
 ## Create a JSON dump of available products from metabolites in the universal model.
 dump-products:
 	docker-compose run --rm web python src/scripts/dump_products.py
 
-#################################################################################
-# Self Documenting Commands                                                     #
-#################################################################################
+################################################################################
+# Self Documenting Commands                                                    #
+################################################################################
 
 .DEFAULT_GOAL := show-help
 
-# Inspired by <http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html>
+# Inspired by
+# <http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html>
 # sed script explained:
 # /^##/:
 # 	* save line in hold space
@@ -156,4 +217,5 @@ show-help:
 		} \
 		printf "\n"; \
 	}' \
-	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
+	| more $(shell test $(shell uname) = Darwin \
+	&& echo '--no-init --raw-control-chars')
