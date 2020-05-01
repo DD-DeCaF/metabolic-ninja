@@ -21,12 +21,12 @@ ARG BASE_TAG=cameo
 ARG BUILD_COMMIT
 ARG BUILD_TIMESTAMP
 
-LABEL dk.dtu.biosustain.metabolic-ninja.alpine.vendor="Novo Nordisk Foundation \
+LABEL dk.dtu.biosustain.metabolic-ninja.debian.vendor="Novo Nordisk Foundation \
 Center for Biosustainability, Technical University of Denmark" \
     maintainer="niso@biosustain.dtu.dk" \
-    dk.dtu.biosustain.metabolic-ninja.alpine.build.base-tag="${BASE_TAG}" \
-    dk.dtu.biosustain.metabolic-ninja.alpine.build.commit="${BUILD_COMMIT}" \
-    dk.dtu.biosustain.metabolic-ninja.alpine.build.timestamp="${BUILD_TIMESTAMP}"
+    dk.dtu.biosustain.metabolic-ninja.debian.build.base-tag="${BASE_TAG}" \
+    dk.dtu.biosustain.metabolic-ninja.debian.build.commit="${BUILD_COMMIT}" \
+    dk.dtu.biosustain.metabolic-ninja.debian.build.timestamp="${BUILD_TIMESTAMP}"
 
 ARG CWD="/app"
 
