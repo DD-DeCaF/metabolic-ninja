@@ -38,7 +38,7 @@ services:
     - WAREHOUSE_API=${WAREHOUSE_API:-https://api-staging.dd-decaf.eu/warehouse}
 
   worker:
-    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${IMAGE_TAG:-latest}
+    image: gcr.io/dd-decaf-cfbf6/metabolic-ninja:${BRANCH:-latest}
     depends_on:
     - rabbitmq
     networks:
