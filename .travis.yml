@@ -31,6 +31,7 @@ before_install:
 install:
 - make build
 - make build-travis
+- make post-build
 - make start
 
 script:
