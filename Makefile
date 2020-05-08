@@ -60,7 +60,7 @@ build-travis:
 	$(info ************************************************************)
 	$(info * Building the service on the basis of:)
 	$(info * gcr.io/dd-decaf-cfbf6/modeling-base:$(LATEST_BASE_TAG))
-	$(info * Today is $(shell date --utc --iso-8601=date).)
+	$(info * Today is $(shell date -u +%Y-%m-%d).)
 	$(info * Please re-run `make lock` if you want to check for and)
 	$(info * depend on a later version.)
 	$(info ************************************************************)
