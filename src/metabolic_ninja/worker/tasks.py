@@ -37,7 +37,7 @@ def design(connection, channel, delivery_tag, body, ack_message):
     try:
         job.save(status="STARTED")
 
-        logger.info(f"Initiating new design workflow")
+        logger.info("Initiating new design workflow")
 
         logger.debug("Starting task: Find product")
         product = find_product(job)
@@ -103,8 +103,8 @@ def design(connection, channel, delivery_tag, body, ack_message):
         # Exceptions are handled in the child processes, so there's nothing to
         # do here. Just abort the workflow and get ready for new jobs.
         logger.info(
-            f"Task failed; aborting workflow and restarting consumption from "
-            f"queue."
+            "Task failed; aborting workflow and restarting consumption "
+            "from queue."
         )
     finally:
         # Acknowledge the message, whether it failed or not.

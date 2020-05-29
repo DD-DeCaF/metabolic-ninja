@@ -103,7 +103,7 @@ def straight_pathway():
     demand.add_metabolites({met_b_prime: -1})
     exchanges.append(demand)
     # Define adapter reactions between native and heterologous metabolites.
-    adapter = cobra.Reaction(f"adapter_b_c_to_b_p_c")
+    adapter = cobra.Reaction("adapter_b_c_to_b_p_c")
     adapter.add_metabolites({met_b: -1, met_b_prime: 1})
     adapters = [adapter]
     product = cobra.Reaction(f"DM_{met_p_prime}")
@@ -141,7 +141,7 @@ def straight_pathway_with_cofactors():
     exchange.bounds = -10, 10
     exchanges.append(exchange)
     # Define adapter reactions between native and heterologous metabolites.
-    adapter = cobra.Reaction(f"adapter_b_c_to_b_p_c")
+    adapter = cobra.Reaction("adapter_b_c_to_b_p_c")
     adapter.add_metabolites({met_b: -1, met_b_prime: 1})
     adapters = [adapter]
     product = cobra.Reaction(f"DM_{met_p_prime}")
@@ -182,13 +182,13 @@ def straight_pathway_with_cofactors_and_adapters():
     exchanges.append(exchange)
     # Define adapter reactions between native and heterologous metabolites.
     adapters = []
-    adapter = cobra.Reaction(f"adapter_b_c_to_b_p_c")
+    adapter = cobra.Reaction("adapter_b_c_to_b_p_c")
     adapter.add_metabolites({met_b: -1, met_b_prime: 1})
     adapters.append(adapter)
-    adapter = cobra.Reaction(f"adapter_c_c_to_c_p_c")
+    adapter = cobra.Reaction("adapter_c_c_to_c_p_c")
     adapter.add_metabolites({met_c: -1, met_c_prime: 1})
     adapters.append(adapter)
-    adapter = cobra.Reaction(f"adapter_d_c_to_d_p_c")
+    adapter = cobra.Reaction("adapter_d_c_to_d_p_c")
     adapter.add_metabolites({met_d: -1, met_d_prime: 1})
     adapters.append(adapter)
     product = cobra.Reaction(f"DM_{met_p_prime}")

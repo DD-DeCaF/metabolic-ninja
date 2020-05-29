@@ -112,7 +112,7 @@ def ack_message(channel, delivery_tag):
 
 def on_terminate(channel, signum, frame):
     """SIGTERM signal handler to terminate the application."""
-    logger.debug(f"Caught SIGTERM, cancelling consumption")
+    logger.debug("Caught SIGTERM, cancelling consumption")
     channel.stop_consuming()
 
 
